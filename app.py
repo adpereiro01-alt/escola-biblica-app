@@ -45,26 +45,34 @@ SALAS = ["Adultos", "Adolescentes", "Jovens", "Maternal", "Juniores", "Primário
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
 
 st.sidebar.title("Navegação")
-st.sidebar.image("Logo AD Pereiro.png", width=150) # Removido temporariamente para evitar travamento
+st.sidebar.image("Logo AD Pereiro.png", width=150) # Logo inserida com sucesso
 
 menu = st.sidebar.radio("Escolha a Tela:", ["Matrícula de Alunos", "Realizar Chamada", "Relatórios"])
 
 # ----------------- TELA 1: MATRÍCULA -----------------
 if menu == "Matrícula de Alunos":
-    st.title("Matrícula - Escola Bíblica")
+    st.title("📖 Matrícula - Escola Bíblica")
     
+    with st.expander("ℹ️ Instruções - Como cadastrar novos alunos"):
+        st.markdown("""
+        * Preencha o **Nome Completo** do aluno.
+        * Informe o endereço e o WhatsApp (o sistema formata o número automaticamente).
+        * Selecione a **Congregação** correta e a **Sala** correspondente à faixa etária ou classe do aluno.
+        * Clique em **Salvar Matrícula** para registrar os dados no sistema.
+        """)
+
     df_matriculas = carregar_dados_matricula()
 
     with st.form("matricula_form", clear_on_submit=True):
-        nome = st.text_input("Nome Completo")
-        endereco = st.text_input("Endereço")
-        whatsapp = st.text_input("N. Whatsapp", placeholder="Ex: 88999999999")
+        nome = st.text_input("Nome Completo", help="Digite o nome completo do membro ou aluno.")
+        endereco = st.text_input("Endereço", help="Rua, número e bairro (opcional).")
+        whatsapp = st.text_input("N. Whatsapp", placeholder="Ex: 88999999999", help="Apenas números com DDD.")
         
         col1, col2 = st.columns(2)
         with col1:
-            congregacao = st.selectbox("Congregação", CONGREGACOES)
+            congregacao = st.selectbox("Congregação", CONGREGACOES, help="Selecione a congregação frequentada.")
         with col2:
-            sala = st.selectbox("Sala", SALAS)
+            sala = st.selectbox("Sala", SALAS, help="Selecione a classe/sala de EBD.")
 
         if st.form_submit_button("Salvar Matrícula"):
             if nome == "":
@@ -84,14 +92,22 @@ if menu == "Matrícula de Alunos":
 
 # ----------------- TELA 2: CHAMADA -----------------
 elif menu == "Realizar Chamada":
-    st.title("Chamada - Escola Bíblica")
+    st.title("✅ Chamada - Escola Bíblica")
     
+    with st.expander("ℹ️ Instruções - Como realizar a chamada semanal"):
+        st.markdown("""
+        1. **Selecione a Congregação** e a **Sala** correspondente nos seletores abaixo.
+        2. Para cada aluno listado, marque se ele esteve **Presente**, se trouxe a **Bíblia** e se trouxe a **Revista**.
+        3. No final da página, informe a **Quantidade de Visitantes** que participaram da sala naquele dia.
+        4. Digite o **Valor Total** arrecadado de ofertas daquela sala e clique em **Finalizar e Salvar Tudo**.
+        """)
+
     df_matriculas = carregar_dados_matricula()
     df_chamadas = carregar_dados_chamada()
     df_ofertas = carregar_dados_ofertas()
 
     if df_matriculas.empty:
-        st.warning("Nenhum aluno matriculado ainda.")
+        st.warning("Nenhum aluno matriculado ainda. Vá na aba de 'Matrícula de Alunos' para cadastrar primeiro.")
     else:
         col1, col2 = st.columns(2)
         with col1:
@@ -103,7 +119,7 @@ elif menu == "Realizar Chamada":
         lista_alunos = df_sala["Nome"].tolist() 
         
         if len(lista_alunos) == 0:
-            st.info(f"Nenhum aluno encontrado na sala {sala_selecionada} da {cong_selecionada}.")
+            st.info(f"Nenhum aluno encontrado na sala **{sala_selecionada}** da **{cong_selecionada}**. Cadastre alunos para esta sala primeiro.")
         else:
             st.write("---")
             col_nome, col_presenca, col_biblia, col_revista = st.columns([3, 1, 1, 1])
@@ -126,12 +142,12 @@ elif menu == "Realizar Chamada":
             
             st.write("---")
             
-            st.subheader("Informações e Oferta da Sala")
+            st.subheader("💰 Informações e Oferta da Sala")
             col_inf1, col_inf2 = st.columns(2)
             with col_inf1:
-                qtd_visitantes = st.number_input("Quantidade de Visitantes na Sala", min_value=0, step=1)
+                qtd_visitantes = st.number_input("Quantidade de Visitantes na Sala", min_value=0, step=1, help="Número de pessoas que visitaram a classe hoje.")
             with col_inf2:
-                oferta_total = st.number_input("Valor total arrecadado (R$)", min_value=0.0, format="%.2f")
+                oferta_total = st.number_input("Valor total arrecadado (R$)", min_value=0.0, format="%.2f", help="Soma em dinheiro das ofertas da sala.")
 
             if st.button("Finalizar e Salvar Tudo"):
                 data_atual = datetime.now().strftime("%d/%m/%Y") 
@@ -167,23 +183,28 @@ elif menu == "Realizar Chamada":
 elif menu == "Relatórios":
     st.title("📊 Painel de Relatório Consolidado da EBD")
     
+    with st.expander("ℹ️ Instruções - Como ler e filtrar os relatórios"):
+        st.markdown("""
+        * **Filtro de Congregação:** Escolha uma congregação específica para ver apenas os dados dela, ou selecione **"Todas"** para ver o consolidado geral.
+        * **Filtro de Data:** Escolha o dia da EBD que deseja consultar ou selecione **"Todas"** para acumular o histórico completo.
+        * A tabela abaixo cruza automaticamente as chamadas com as ofertas, dividindo os dados por **Sala**.
+        """)
+    
     df_chamadas = carregar_dados_chamada()
     df_ofertas = carregar_dados_ofertas()
 
     if df_chamadas.empty and df_ofertas.empty:
         st.info("Nenhum dado de chamada ou oferta registrado ainda.")
     else:
-        # Filtros globais do relatório
-        st.subheader("Filtros")
+        st.subheader("Filtros de Consulta")
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             filtro_cong = st.selectbox("Filtrar Congregação:", ["Todas"] + CONGREGACOES)
         with col_f2:
-            # Pega todas as datas unificadas de chamadas e ofertas
             todas_datas = sorted(list(set(df_chamadas["Data"].dropna().tolist() + df_ofertas["Data"].dropna().tolist())))
             filtro_data = st.selectbox("Filtrar Data:", ["Todas"] + todas_datas)
 
-        # 1. Processando Frequência (Presentes, Bíblias, Revistas) por Sala
+        # 1. Processando Frequência
         if not df_chamadas.empty:
             df_c_filt = df_chamadas.copy()
             if filtro_cong != "Todas":
@@ -203,7 +224,7 @@ elif menu == "Relatórios":
         else:
             freq_agrupada = pd.DataFrame(columns=["Sala", "Presentes", "Bíblias", "Revistas"])
 
-        # 2. Processando Ofertas e Visitantes por Sala
+        # 2. Processando Ofertas e Visitantes
         if not df_ofertas.empty:
             df_o_filt = df_ofertas.copy()
             if filtro_cong != "Todas":
@@ -218,12 +239,10 @@ elif menu == "Relatórios":
         else:
             ofertas_agrupadas = pd.DataFrame(columns=["Sala", "Visitantes", "Valor_Total"])
 
-        # 3. Unificando os dois mundos em uma tabela única por Sala
+        # 3. Unificando
         if not freq_agrupada.empty or not ofertas_agrupadas.empty:
-            # Junta os dataframes pela coluna "Sala"
             relatorio_final = pd.merge(freq_agrupada, ofertas_agrupadas, on="Sala", how="outer").fillna(0)
             
-            # Formata a coluna de dinheiro
             relatorio_final["Ofertas (R$)"] = relatorio_final["Valor_Total"].apply(lambda x: f"R$ {x:,.2f}")
             relatorio_final = relatorio_final.drop(columns=["Valor_Total"])
 
@@ -231,16 +250,15 @@ elif menu == "Relatórios":
             st.subheader("Resumo Geral por Sala")
             st.dataframe(relatorio_final, use_container_width=True)
 
-            # Métricas Totais no Rodapé do Relatório
-            st.markdown("### Totais Gerais")
+            # Métricas Totais
+            st.markdown("### 📌 Totais Gerais")
             tot_pres = int(relatorio_final["Presentes"].sum()) if "Presentes" in relatorio_final else 0
             tot_bib = int(relatorio_final["Bíblias"].sum()) if "Bíblias" in relatorio_final else 0
             tot_rev = int(relatorio_final["Revistas"].sum()) if "Revistas" in relatorio_final else 0
             tot_vis = int(relatorio_final["Visitantes"].sum()) if "Visitantes" in relatorio_final else 0
             
-            # Calcula o valor numérico somado para o total geral em dinheiro
-            if not df_ofertas.empty:
-                val_num_tot = df_o_filt["Valor Total"].sum() if 'df_o_filt' in locals() else 0
+            if not df_ofertas.empty and 'df_o_filt' in locals():
+                val_num_tot = df_o_filt["Valor Total"].sum()
             else:
                 val_num_tot = 0
 
