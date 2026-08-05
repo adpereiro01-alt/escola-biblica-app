@@ -45,7 +45,8 @@ SALAS = ["Adultos", "Adolescentes", "Jovens", "Maternal", "Juniores", "Primário
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
 
 st.sidebar.title("Navegação")
-#st.sidebar.image("Logos Ad Pereiro (1).png", width=250)
+# st.sidebar.image("logo_ad.png", width=150) # Removido temporariamente para evitar travamento
+
 menu = st.sidebar.radio("Escolha a Tela:", ["Matrícula de Alunos", "Realizar Chamada", "Relatórios"])
 
 # ----------------- TELA 1: MATRÍCULA -----------------
@@ -162,82 +163,92 @@ elif menu == "Realizar Chamada":
                 
                 st.success("Dados salvos com sucesso!")
 
-# ----------------- TELA 3: RELATÓRIOS -----------------
+# ----------------- TELA 3: RELATÓRIO UNIFICADO -----------------
 elif menu == "Relatórios":
-    st.title("Painel de Relatórios Consolidados")
-    
-    aba1, aba2 = st.tabs(["📊 Relatório Consolidado de Frequência", "💰 Relatório de Ofertas e Visitantes"])
+    st.title("📊 Painel de Relatório Consolidado da EBD")
     
     df_chamadas = carregar_dados_chamada()
     df_ofertas = carregar_dados_ofertas()
 
-    with aba1:
-        st.subheader("Filtro por Congregação e Data")
-        if df_chamadas.empty:
-            st.info("Nenhuma chamada registrada ainda.")
-        else:
-            col_f1, col_f2 = st.columns(2)
-            with col_f1:
-                filtro_cong = st.selectbox("Filtrar Congregação:", ["Todas"] + CONGREGACOES, key="f_cong")
-            with col_f2:
-                datas_disponiveis = ["Todas"] + sorted(df_chamadas["Data"].unique().tolist())
-                filtro_data = st.selectbox("Filtrar Data:", datas_disponiveis, key="f_data")
-            
-            df_filtrado = df_chamadas.copy()
+    if df_chamadas.empty and df_ofertas.empty:
+        st.info("Nenhum dado de chamada ou oferta registrado ainda.")
+    else:
+        # Filtros globais do relatório
+        st.subheader("Filtros")
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            filtro_cong = st.selectbox("Filtrar Congregação:", ["Todas"] + CONGREGACOES)
+        with col_f2:
+            # Pega todas as datas unificadas de chamadas e ofertas
+            todas_datas = sorted(list(set(df_chamadas["Data"].dropna().tolist() + df_ofertas["Data"].dropna().tolist())))
+            filtro_data = st.selectbox("Filtrar Data:", ["Todas"] + todas_datas)
+
+        # 1. Processando Frequência (Presentes, Bíblias, Revistas) por Sala
+        if not df_chamadas.empty:
+            df_c_filt = df_chamadas.copy()
             if filtro_cong != "Todas":
-                df_filtrado = df_filtrado[df_filtrado["Congregação"] == filtro_cong]
+                df_c_filt = df_c_filt[df_c_filt["Congregação"] == filtro_cong]
             if filtro_data != "Todas":
-                df_filtrado = df_filtrado[df_filtrado["Data"] == filtro_data]
+                df_c_filt = df_c_filt[df_c_filt["Data"] == filtro_data]
 
-            if df_filtrado.empty:
-                st.warning("Nenhum dado encontrado para os filtros selecionados.")
-            else:
-                df_filtrado["p_num"] = df_filtrado["Presente"].apply(lambda x: 1 if x == "Sim" else 0)
-                df_filtrado["b_num"] = df_filtrado["Trouxe Bíblia"].apply(lambda x: 1 if x == "Sim" else 0)
-                df_filtrado["r_num"] = df_filtrado["Trouxe Revista"].apply(lambda x: 1 if x == "Sim" else 0)
+            df_c_filt["p_num"] = df_c_filt["Presente"].apply(lambda x: 1 if x == "Sim" else 0)
+            df_c_filt["b_num"] = df_c_filt["Trouxe Bíblia"].apply(lambda x: 1 if x == "Sim" else 0)
+            df_c_filt["r_num"] = df_c_filt["Trouxe Revista"].apply(lambda x: 1 if x == "Sim" else 0)
 
-                relatorio_consolidado = df_filtrado.groupby("Sala").agg(
-                    Total_Presentes=("p_num", "sum"),
-                    Total_Biblias=("b_num", "sum"),
-                    Total_Revistas=("r_num", "sum")
-                ).reset_index()
-
-                st.markdown("### Resumo por Sala")
-                st.dataframe(relatorio_consolidado, use_container_width=True)
-
-    with aba2:
-        st.subheader("Histórico Financeiro e de Visitantes")
-        if df_ofertas.empty:
-            st.info("Nenhuma oferta registrada ainda.")
+            freq_agrupada = df_c_filt.groupby("Sala").agg(
+                Presentes=("p_num", "sum"),
+                Bíblias=("b_num", "sum"),
+                Revistas=("r_num", "sum")
+            ).reset_index()
         else:
-            col_fo1, col_fo2 = st.columns(2)
-            with col_fo1:
-                filtro_cong_of = st.selectbox("Filtrar Congregação (Ofertas):", ["Todas"] + CONGREGACOES, key="f_cong_of")
-            with col_fo2:
-                datas_of_disp = ["Todas"] + sorted(df_ofertas["Data"].unique().tolist())
-                filtro_data_of = st.selectbox("Filtrar Data (Ofertas):", datas_of_disp, key="f_data_of")
+            freq_agrupada = pd.DataFrame(columns=["Sala", "Presentes", "Bíblias", "Revistas"])
 
-            df_of_filtrado = df_ofertas.copy()
-            if filtro_cong_of != "Todas":
-                df_of_filtrado = df_of_filtrado[df_of_filtrado["Congregação"] == filtro_cong_of]
-            if filtro_data_of != "Todas":
-                df_of_filtrado = df_of_filtrado[df_of_filtrado["Data"] == filtro_data_of]
+        # 2. Processando Ofertas e Visitantes por Sala
+        if not df_ofertas.empty:
+            df_o_filt = df_ofertas.copy()
+            if filtro_cong != "Todas":
+                df_o_filt = df_o_filt[df_o_filt["Congregação"] == filtro_cong]
+            if filtro_data != "Todas":
+                df_o_filt = df_o_filt[df_o_filt["Data"] == filtro_data]
 
-            if df_of_filtrado.empty:
-                st.warning("Nenhum registro financeiro encontrado para os filtros selecionados.")
+            ofertas_agrupadas = df_o_filt.groupby("Sala").agg(
+                Visitantes=("Visitantes", "sum"),
+                Valor_Total=("Valor Total", "sum")
+            ).reset_index()
+        else:
+            ofertas_agrupadas = pd.DataFrame(columns=["Sala", "Visitantes", "Valor_Total"])
+
+        # 3. Unificando os dois mundos em uma tabela única por Sala
+        if not freq_agrupada.empty or not ofertas_agrupadas.empty:
+            # Junta os dataframes pela coluna "Sala"
+            relatorio_final = pd.merge(freq_agrupada, ofertas_agrupadas, on="Sala", how="outer").fillna(0)
+            
+            # Formata a coluna de dinheiro
+            relatorio_final["Ofertas (R$)"] = relatorio_final["Valor_Total"].apply(lambda x: f"R$ {x:,.2f}")
+            relatorio_final = relatorio_final.drop(columns=["Valor_Total"])
+
+            st.markdown("---")
+            st.subheader("Resumo Geral por Sala")
+            st.dataframe(relatorio_final, use_container_width=True)
+
+            # Métricas Totais no Rodapé do Relatório
+            st.markdown("### Totais Gerais")
+            tot_pres = int(relatorio_final["Presentes"].sum()) if "Presentes" in relatorio_final else 0
+            tot_bib = int(relatorio_final["Bíblias"].sum()) if "Bíblias" in relatorio_final else 0
+            tot_rev = int(relatorio_final["Revistas"].sum()) if "Revistas" in relatorio_final else 0
+            tot_vis = int(relatorio_final["Visitantes"].sum()) if "Visitantes" in relatorio_final else 0
+            
+            # Calcula o valor numérico somado para o total geral em dinheiro
+            if not df_ofertas.empty:
+                val_num_tot = df_o_filt["Valor Total"].sum() if 'df_o_filt' in locals() else 0
             else:
-                # Blindagem: garante que as colunas existem antes de agrupar
-                if "Visitantes" in df_of_filtrado.columns and "Valor Total" in df_of_filtrado.columns:
-                    relatorio_ofertas = df_of_filtrado.groupby(["Congregação", "Sala"]).agg(
-                        Total_Visitantes=("Visitantes", "sum"),
-                        Valor_Total_Ofertas=("Valor Total", "sum")
-                    ).reset_index()
+                val_num_tot = 0
 
-                    relatorio_ofertas["Valor Total de Ofertas"] = relatorio_ofertas["Valor_Total_Ofertas"].apply(lambda x: f"R$ {x:,.2f}")
-                    relatorio_ofertas = relatorio_ofertas.drop(columns=["Valor_Total_Ofertas"])
-
-                    st.dataframe(relatorio_ofertas, use_container_width=True)
-                else:
-                    # Caso encontre uma planilha antiga sem as colunas novas, recria a estrutura limpa
-                    st.warning("A planilha de ofertas anterior estava desatualizada. Por favor, limpe ou reinicie os dados para carregar corretamente.")
-                    st.dataframe(df_of_filtrado, use_container_width=True)
+            m1, m2, m3, m4, m5 = st.columns(5)
+            m1.metric("Total Presentes", tot_pres)
+            m2.metric("Total Bíblias", tot_bib)
+            m3.metric("Total Revistas", tot_rev)
+            m4.metric("Total Visitantes", tot_vis)
+            m5.metric("Total Ofertas", f"R$ {val_num_tot:,.2f}")
+        else:
+            st.warning("Nenhum registro encontrado para os filtros selecionados.")
