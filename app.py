@@ -45,7 +45,7 @@ SALAS = ["Adultos", "Adolescentes", "Jovens", "Maternal", "Juniores", "Primário
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
 
 st.sidebar.title("Navegação")
-st.sidebar.image("Logos Ad Pereiro (1).png", width=150)
+st.sidebar.image("Logos Ad Pereiro (1).png", width=250)
 menu = st.sidebar.radio("Escolha a Tela:", ["Matrícula de Alunos", "Realizar Chamada", "Relatórios"])
 
 # ----------------- TELA 1: MATRÍCULA -----------------
