@@ -105,19 +105,42 @@ elif menu == "Relatórios":
     df_o = carregar_dados(ABA_OFERTAS)
     
     if not df_c.empty or not df_o.empty:
+        # Busca todas as datas disponíveis nas abas
+        todas_datas = set()
+        if not df_c.empty and "Data" in df_c.columns:
+            todas_datas.update(df_c["Data"].astype(str).unique())
+        if not df_o.empty and "Data" in df_o.columns:
+            todas_datas.update(df_o["Data"].astype(str).unique())
+            
+        # Filtra datas vazias e ordena da mais recente para a mais antiga
+        todas_datas = sorted([d for d in todas_datas if d.strip()], reverse=True)
+        
+        # Cria a caixa de seleção para o filtro de data
+        data_filtro = st.selectbox("📅 Filtrar por Data:", ["Todas as Datas"] + todas_datas)
+        
+        st.markdown("---")
+        
+        # Filtra os dados de acordo com a data escolhida
+        if data_filtro != "Todas as Datas":
+            if not df_c.empty and "Data" in df_c.columns:
+                df_c = df_c[df_c["Data"].astype(str) == data_filtro]
+            if not df_o.empty and "Data" in df_o.columns:
+                df_o = df_o[df_o["Data"].astype(str) == data_filtro]
+        
+        # Calcula presentes (se a tabela de chamadas não estiver vazia após o filtro)
         pres_resumo = df_c.groupby("Sala").size().reset_index(name="Presentes") if not df_c.empty and "Sala" in df_c.columns else pd.DataFrame(columns=["Sala", "Presentes"])
         
         # Puxa visitantes, bíblias, revistas e ofertas para somar
         colunas_soma = ["Visitantes", "Bíblias", "Revistas", "Valor Total"]
-        
-        # Confere se as colunas já existem na planilha para não dar erro
         colunas_presentes = [col for col in colunas_soma if not df_o.empty and col in df_o.columns]
         
+        # Calcula valores da sala (se a tabela de ofertas não estiver vazia após o filtro)
         if colunas_presentes:
             oferta_resumo = df_o.groupby("Sala")[colunas_presentes].sum().reset_index()
         else:
             oferta_resumo = pd.DataFrame(columns=["Sala"] + colunas_soma)
         
+        # Une as tabelas
         relatorio_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
         
         # Converte para número inteiro (remove casas decimais de quantidades)
@@ -125,6 +148,7 @@ elif menu == "Relatórios":
             if col in relatorio_final.columns:
                 relatorio_final[col] = relatorio_final[col].astype(int)
                 
+        # Exibe a tabela do relatório
         st.dataframe(relatorio_final, use_container_width=True)
     else:
         st.info("Ainda não há dados suficientes nas planilhas para gerar o relatório.")
