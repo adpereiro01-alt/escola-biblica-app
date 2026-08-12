@@ -128,16 +128,16 @@ if menu == "Início":
     
     col_pastor, col_super = st.columns(2)
     with col_pastor:
-        if os.path.exists("pastor.jpg"):
+        if os.path.exists("pastor.png"):
             st.image("pastor.jpg", width=250, caption="Pastor Presidente")
         else:
-            st.info("📌 Envie a foto 'pastor.jpg' no GitHub para aparecer aqui.")
+            st.info("📌 Envie a foto 'pastor.png' no GitHub para aparecer aqui.")
             
     with col_super:
-        if os.path.exists("superintendente.jpg"):
+        if os.path.exists("superintendente.png"):
             st.image("superintendente.jpg", width=250, caption="Superintendente da EBD")
         else:
-            st.info("📌 Envie a foto 'superintendente.jpg' no GitHub para aparecer aqui.")
+            st.info("📌 Envie a foto 'superintendente.png' no GitHub para aparecer aqui.")
 
 elif menu == "Cadastrar Aluno":
     adicionar_fundo("fundo_aluno.jpg")
