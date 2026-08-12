@@ -61,7 +61,7 @@ st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout
 # --- CABEÇALHO E MENU SUPERIOR ---
 col_logo, col_vazia = st.columns([1, 4])
 with col_logo:
-    st.image("Logo AD Pereiro H.png", width=500)
+    st.image("Logo AD Pereiro H.png", width=1000)
 
 menu = option_menu(
     menu_title=None,
