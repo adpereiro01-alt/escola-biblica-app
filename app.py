@@ -12,12 +12,9 @@ ABA_CHAMADAS = "Registro Chamadas"
 ABA_OFERTAS = "Registro Ofertas"
 
 def conectar_sheets():
-    creds_dict = json.loads(st.secrets["GCP_CREDENTIALS"])
+    # Puxa os dados direto do Secret sem precisar converter JSON!
+    creds_dict = dict(st.secrets["gcp"])
     
-    # Garante que as quebras de linha da chave privada sejam interpretadas corretamente
-    if "private_key" in creds_dict:
-        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-        
     scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
