@@ -11,9 +11,7 @@ ABA_CHAMADAS = "Registro Chamadas"
 ABA_OFERTAS = "Registro Ofertas"
 
 def conectar_sheets():
-    # Puxa os dados direto do Secret sem precisar converter JSON
     creds_dict = dict(st.secrets["gcp"])
-    
     scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
@@ -44,21 +42,24 @@ SALAS = ["Adultos", "Adolescentes", "Jovens", "Maternal", "Juniores", "Primário
 
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
 st.sidebar.image("Logo AD Pereiro.png", width=150)
-menu = st.sidebar.radio("Escolha a Tela:", ["Matrícula de Alunos", "Realizar Chamada", "Relatórios"])
+menu = st.sidebar.radio("Escolha a Tela:", ["Matrícula", "Realizar Chamada", "Relatórios"])
 
-if menu == "Matrícula de Alunos":
+if menu == "Matrícula":
     st.title("📖 Matrícula")
+    
+    cargo = st.radio("O que você deseja cadastrar?", ["Aluno", "Professor"], horizontal=True)
     nome = st.text_input("Nome Completo")
     endereco = st.text_input("Endereço")
     whatsapp = st.text_input("Whatsapp")
     cong = st.selectbox("Congregação", CONGREGACOES)
     sala = st.selectbox("Sala", SALAS)
-    if st.button("Salvar Matrícula"):
+    
+    if st.button("Salvar Cadastro"):
         if nome:
-            salvar_linha(ABA_MATRICULADOS, [datetime.now().strftime("%d/%m/%Y"), nome, endereco, whatsapp, cong, sala])
-            st.success("Salvo no Google Sheets com sucesso!")
+            salvar_linha(ABA_MATRICULADOS, [datetime.now().strftime("%d/%m/%Y"), nome, endereco, whatsapp, cong, sala, cargo])
+            st.success(f"{cargo} salvo no Google Sheets com sucesso!")
         else:
-            st.warning("Preencha o nome do aluno.")
+            st.warning("Preencha o nome.")
 
 elif menu == "Realizar Chamada":
     st.title("✅ Chamada")
@@ -67,15 +68,34 @@ elif menu == "Realizar Chamada":
     sala = st.selectbox("Sala", SALAS)
     
     if not df_m.empty and "Congregação" in df_m.columns and "Sala" in df_m.columns:
-        alunos = df_m[(df_m["Congregação"] == cong) & (df_m["Sala"] == sala)]["Nome"].tolist()
+        # Se os dados antigos não tiverem a coluna Cargo, trata todo mundo como Aluno para não dar erro
+        if "Cargo" not in df_m.columns:
+            df_m["Cargo"] = "Aluno"
+            
+        alunos = df_m[(df_m["Congregação"] == cong) & (df_m["Sala"] == sala) & (df_m["Cargo"] == "Aluno")]["Nome"].tolist()
+        professores = df_m[(df_m["Congregação"] == cong) & (df_m["Sala"] == sala) & (df_m["Cargo"] == "Professor")]["Nome"].tolist()
     else:
         alunos = []
+        professores = []
         
-    if not alunos:
-        st.info("Nenhum aluno cadastrado para esta congregação/sala.")
+    if not alunos and not professores:
+        st.info("Nenhum cadastro (aluno ou professor) encontrado para esta congregação/sala.")
     else:
+        st.markdown("### 👨‍🏫 Professor do Dia")
+        if professores:
+            prof_dia = st.selectbox("Selecione quem deu a aula hoje:", professores + ["Outro (Substituto)"])
+            if prof_dia == "Outro (Substituto)":
+                prof_dia = st.text_input("Digite o nome do substituto:")
+        else:
+            st.warning("Nenhum professor cadastrado para esta sala.")
+            prof_dia = st.text_input("Digite o nome do Professor que deu a aula:")
+        
         st.markdown("### 👥 Lista de Alunos")
-        presencas = {a: st.checkbox(a) for a in alunos}
+        if alunos:
+            presencas = {a: st.checkbox(a) for a in alunos}
+        else:
+            st.info("Apenas professores cadastrados. Nenhum aluno nesta sala.")
+            presencas = {}
         
         st.markdown("---")
         st.markdown("### 📊 Fechamento da Sala")
@@ -88,16 +108,19 @@ elif menu == "Realizar Chamada":
             oferta = st.number_input("Oferta (R$)", format="%.2f")
         
         if st.button("Finalizar Chamada"):
-            data = datetime.now().strftime("%d/%m/%Y")
-            
-            # Salva presença individual
-            for a, pres in presencas.items():
-                if pres:
-                    salvar_linha(ABA_CHAMADAS, [data, cong, sala, a, "Sim"])
-            
-            # Salva totais da sala
-            salvar_linha(ABA_OFERTAS, [data, cong, sala, visitantes, qtd_biblias, qtd_revistas, oferta])
-            st.success("Dados da chamada e totais da sala enviados para a planilha!")
+            if not prof_dia:
+                st.error("Por favor, informe quem foi o professor do dia antes de finalizar.")
+            else:
+                data = datetime.now().strftime("%d/%m/%Y")
+                
+                # Salva presença individual dos alunos
+                for a, pres in presencas.items():
+                    if pres:
+                        salvar_linha(ABA_CHAMADAS, [data, cong, sala, a, "Sim"])
+                
+                # Salva totais da sala + Nome do Professor
+                salvar_linha(ABA_OFERTAS, [data, cong, sala, prof_dia, visitantes, qtd_biblias, qtd_revistas, oferta])
+                st.success("Dados da chamada e totais da sala enviados para a planilha!")
 
 elif menu == "Relatórios":
     st.title("📊 Relatórios")
@@ -105,50 +128,38 @@ elif menu == "Relatórios":
     df_o = carregar_dados(ABA_OFERTAS)
     
     if not df_c.empty or not df_o.empty:
-        # Busca todas as datas disponíveis nas abas
         todas_datas = set()
         if not df_c.empty and "Data" in df_c.columns:
             todas_datas.update(df_c["Data"].astype(str).unique())
         if not df_o.empty and "Data" in df_o.columns:
             todas_datas.update(df_o["Data"].astype(str).unique())
             
-        # Filtra datas vazias e ordena da mais recente para a mais antiga
         todas_datas = sorted([d for d in todas_datas if d.strip()], reverse=True)
-        
-        # Cria a caixa de seleção para o filtro de data
         data_filtro = st.selectbox("📅 Filtrar por Data:", ["Todas as Datas"] + todas_datas)
-        
         st.markdown("---")
         
-        # Filtra os dados de acordo com a data escolhida
         if data_filtro != "Todas as Datas":
             if not df_c.empty and "Data" in df_c.columns:
                 df_c = df_c[df_c["Data"].astype(str) == data_filtro]
             if not df_o.empty and "Data" in df_o.columns:
                 df_o = df_o[df_o["Data"].astype(str) == data_filtro]
         
-        # Calcula presentes (se a tabela de chamadas não estiver vazia após o filtro)
         pres_resumo = df_c.groupby("Sala").size().reset_index(name="Presentes") if not df_c.empty and "Sala" in df_c.columns else pd.DataFrame(columns=["Sala", "Presentes"])
         
-        # Puxa visitantes, bíblias, revistas e ofertas para somar
         colunas_soma = ["Visitantes", "Bíblias", "Revistas", "Valor Total"]
         colunas_presentes = [col for col in colunas_soma if not df_o.empty and col in df_o.columns]
         
-        # Calcula valores da sala (se a tabela de ofertas não estiver vazia após o filtro)
         if colunas_presentes:
             oferta_resumo = df_o.groupby("Sala")[colunas_presentes].sum().reset_index()
         else:
             oferta_resumo = pd.DataFrame(columns=["Sala"] + colunas_soma)
         
-        # Une as tabelas
         relatorio_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
         
-        # Converte para número inteiro (remove casas decimais de quantidades)
         for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
             if col in relatorio_final.columns:
                 relatorio_final[col] = relatorio_final[col].astype(int)
                 
-        # Exibe a tabela do relatório
         st.dataframe(relatorio_final, use_container_width=True)
     else:
         st.info("Ainda não há dados suficientes nas planilhas para gerar o relatório.")
