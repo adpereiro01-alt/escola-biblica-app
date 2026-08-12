@@ -4,6 +4,8 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 from streamlit_option_menu import option_menu
+import base64
+import os
 
 # --- CONFIGURAÇÃO ---
 NOME_PLANILHA = "Secretária EBD ADTC Pereiro"
@@ -55,37 +57,90 @@ def obter_trimestre(data_str):
     except:
         return "1º Trimestre"
 
+# --- FUNÇÃO PARA IMAGEM DE FUNDO ---
+def adicionar_fundo(nome_arquivo):
+    if os.path.exists(nome_arquivo):
+        with open(nome_arquivo, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image: url(data:image/jpeg;base64,{encoded_string});
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+            }}
+            /* Caixa branca semi-transparente para dar leitura aos textos */
+            .block-container {{
+                background-color: rgba(255, 255, 255, 0.90);
+                padding: 2rem;
+                border-radius: 15px;
+                margin-top: 10px;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
 # --- CONFIGURAÇÃO DE PÁGINA ---
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
 
-# --- CABEÇALHO E MENU SUPERIOR ---
-col_logo, col_titulo = st.columns([1, 3]) 
-
-with col_logo:
-    # AQUI ESTÁ A CORREÇÃO COM O NOME EXATO DO ARQUIVO
-    st.image("Logo AD Pereiro H.png", width=1000)
-
-with col_titulo:
-    st.markdown("<br>", unsafe_allow_html=True) 
-    st.markdown("## Sistema de Controle de Escola Bíblica")
-
+# --- MENU SUPERIOR ---
 menu = option_menu(
     menu_title=None,
-    options=["Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"],
-    icons=["person-add", "easel", "card-checklist", "bar-chart"], 
+    options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"],
+    icons=["house", "person-add", "easel", "card-checklist", "bar-chart"], 
     default_index=0,
     orientation="horizontal",
     styles={
-        "container": {"padding": "0!important", "background-color": "#f8f9fa"},
+        "container": {"padding": "0!important", "background-color": "#111"},
         "icon": {"color": "#ff6600", "font-size": "18px"},
-        "nav-link": {"font-size": "16px", "text-align": "center", "margin":"0px", "--hover-color": "#eee"},
-        "nav-link-selected": {"background-color": "#ff6600"},
+        "nav-link": {"font-size": "16px", "text-align": "center", "margin":"0px", "color": "#fff", "--hover-color": "#333"},
+        "nav-link-selected": {"background-color": "#ff6600", "color": "#fff"},
     }
 )
 st.markdown("---")
 
+# Se NÃO estiver na tela "Início", mostra o Cabeçalho com a Logo
+if menu != "Início":
+    col_logo, col_titulo = st.columns([1, 3]) 
+    with col_logo:
+        if os.path.exists("Logo AD Pereiro H.png"):
+            st.image("Logo AD Pereiro H.png", width=250)
+    with col_titulo:
+        st.markdown("<br>", unsafe_allow_html=True) 
+        st.markdown("## Sistema de Controle de Escola Bíblica")
+    st.markdown("---")
+
 # --- TELAS ---
-if menu == "Cadastrar Aluno":
+if menu == "Início":
+    adicionar_fundo("fundo_home.jpg") # Puxa a foto de fundo da igreja
+    
+    st.image("Logo AD Pereiro H.png", width=400) # Logo maior na capa
+    st.title("Bem-vindo à Escola Bíblica Dominical")
+    st.markdown("### Assembleia de Deus Templo Central - Pereiro-CE")
+    st.write("A Escola Bíblica Dominical é o coração da nossa igreja. Aqui estudamos a Palavra de Deus, formamos o caráter cristão e fortalecemos nossa fé através de um ensino dedicado e inspirado.")
+    
+    st.markdown("---")
+    st.markdown("### Nossa Liderança")
+    
+    col_pastor, col_super = st.columns(2)
+    with col_pastor:
+        if os.path.exists("pastor.jpg"):
+            st.image("pastor.jpg", width=250, caption="Pastor Presidente")
+        else:
+            st.info("📌 Envie a foto 'pastor.jpg' no GitHub para aparecer aqui.")
+            
+    with col_super:
+        if os.path.exists("superintendente.jpg"):
+            st.image("superintendente.jpg", width=250, caption="Superintendente da EBD")
+        else:
+            st.info("📌 Envie a foto 'superintendente.jpg' no GitHub para aparecer aqui.")
+
+elif menu == "Cadastrar Aluno":
+    adicionar_fundo("fundo_aluno.jpg")
     st.title("👨‍🎓 Cadastro de Aluno")
     nome = st.text_input("Nome Completo do Aluno")
     whatsapp = st.text_input("Whatsapp")
@@ -101,6 +156,7 @@ if menu == "Cadastrar Aluno":
             st.warning("Preencha o nome do aluno.")
 
 elif menu == "Cadastrar Professor":
+    adicionar_fundo("fundo_prof.jpg")
     st.title("👨‍🏫 Cadastro de Professor")
     nome = st.text_input("Nome Completo do Professor")
     whatsapp = st.text_input("Whatsapp")
@@ -115,6 +171,7 @@ elif menu == "Cadastrar Professor":
             st.warning("Preencha o nome do professor.")
 
 elif menu == "Realizar Chamada":
+    adicionar_fundo("fundo_chamada.jpg")
     st.title("✅ Chamada")
     df_alunos = carregar_dados(ABA_MATRICULADOS)
     df_prof = carregar_dados(ABA_PROFESSORES)
@@ -169,6 +226,7 @@ elif menu == "Realizar Chamada":
             st.success("Chamada salva com sucesso!")
 
 elif menu == "Relatórios":
+    adicionar_fundo("fundo_relatorio.jpg")
     st.title("📊 Relatórios e Estatísticas")
     df_c = carregar_dados(ABA_CHAMADAS)
     df_o = carregar_dados(ABA_OFERTAS)
