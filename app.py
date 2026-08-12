@@ -63,7 +63,7 @@ col_logo, col_titulo = st.columns([1, 3])
 
 with col_logo:
     # AQUI ESTÁ A CORREÇÃO COM O NOME EXATO DO ARQUIVO
-    st.image("Logo AD Pereiro H.png", width=250)
+    st.image("Logo AD Pereiro H.png", width=1000)
 
 with col_titulo:
     st.markdown("<br>", unsafe_allow_html=True) 
