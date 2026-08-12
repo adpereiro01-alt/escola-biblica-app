@@ -59,9 +59,16 @@ def obter_trimestre(data_str):
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
 
 # --- CABEÇALHO E MENU SUPERIOR ---
-col_logo, col_vazia = st.columns([1, 4])
+# Cria duas colunas: uma estreita para a logo e uma larga para o título
+col_logo, col_titulo = st.columns([1, 3]) 
+
 with col_logo:
-    st.image("Logo AD Pereiro H.png", width=2000)
+    st.image("logo.png", width=250)
+
+with col_titulo:
+    # Adiciona um espaço em branco para alinhar o texto verticalmente com a imagem
+    st.markdown("<br>", unsafe_allow_html=True) 
+    st.markdown("## Sistema de Controle de Escola Bíblica")
 
 menu = option_menu(
     menu_title=None,
