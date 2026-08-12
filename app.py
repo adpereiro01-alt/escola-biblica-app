@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
+from streamlit_option_menu import option_menu
 
 # --- CONFIGURAÇÃO ---
 NOME_PLANILHA = "Secretária EBD ADTC Pereiro"
@@ -54,10 +55,30 @@ def obter_trimestre(data_str):
     except:
         return "1º Trimestre"
 
+# --- CONFIGURAÇÃO DE PÁGINA ---
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
-st.sidebar.image("Logo AD Pereiro.png", width=150)
-menu = st.sidebar.radio("Menu:", ["Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"])
 
+# --- CABEÇALHO E MENU SUPERIOR ---
+col_logo, col_vazia = st.columns([1, 4])
+with col_logo:
+    st.image("Logo AD Pereiro.png", width=150)
+
+menu = option_menu(
+    menu_title=None,
+    options=["Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"],
+    icons=["person-add", "easel", "card-checklist", "bar-chart"], 
+    default_index=0,
+    orientation="horizontal",
+    styles={
+        "container": {"padding": "0!important", "background-color": "#f8f9fa"},
+        "icon": {"color": "#ff6600", "font-size": "18px"},
+        "nav-link": {"font-size": "16px", "text-align": "center", "margin":"0px", "--hover-color": "#eee"},
+        "nav-link-selected": {"background-color": "#ff6600"},
+    }
+)
+st.markdown("---")
+
+# --- TELAS ---
 if menu == "Cadastrar Aluno":
     st.title("👨‍🎓 Cadastro de Aluno")
     nome = st.text_input("Nome Completo do Aluno")
@@ -95,7 +116,6 @@ elif menu == "Realizar Chamada":
     cong = st.selectbox("Congregação", CONGREGACOES)
     sala = st.selectbox("Sala", SALAS)
     
-    # Filtra alunos e professores da congregação e sala escolhidas
     alunos_sala = []
     if not df_alunos.empty and "Congregação" in df_alunos.columns and "Sala" in df_alunos.columns:
         alunos_sala = df_alunos[(df_alunos["Congregação"] == cong) & (df_alunos["Sala"] == sala)]["Nome"].tolist()
