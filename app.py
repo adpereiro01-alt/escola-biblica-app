@@ -47,6 +47,21 @@ def salvar_linha(aba, dados_lista):
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
 
+# Função resgatada para atualizar dados existentes!
+def atualizar_linha(aba, row_index, dados_lista):
+    try:
+        client = conectar_sheets()
+        sheet = client.open(NOME_PLANILHA).worksheet(aba)
+        # Define até qual coluna atualizar baseado no tamanho da lista
+        letras = "ABCDEFGH"
+        ultima_letra = letras[len(dados_lista)-1]
+        cell_list = sheet.range(f'A{row_index}:{ultima_letra}{row_index}')
+        for i, val in enumerate(dados_lista):
+            cell_list[i].value = val
+        sheet.update_cells(cell_list)
+    except Exception as e:
+        st.error(f"Erro ao atualizar: {e}")
+
 def obter_trimestre(data_str):
     try:
         mes = int(data_str.split('/')[1])
@@ -72,7 +87,6 @@ def adicionar_fundo(nome_arquivo):
                 background-repeat: no-repeat;
                 background-attachment: fixed;
             }}
-            /* Caixa branca semi-transparente para dar leitura aos textos */
             .block-container {{
                 background-color: rgba(255, 255, 255, 0.90);
                 padding: 2rem;
@@ -96,8 +110,9 @@ with st.sidebar:
     
     menu = option_menu(
         menu_title="Menu Principal",
-        options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"],
-        icons=["house", "person-add", "easel", "card-checklist", "bar-chart"], 
+        # Adicionei a tela "Editar Cadastros" aqui embaixo
+        options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Editar Cadastros", "Realizar Chamada", "Relatórios"],
+        icons=["house", "person-add", "easel", "pencil-square", "card-checklist", "bar-chart"], 
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "transparent"},
@@ -122,7 +137,6 @@ if menu != "Início":
 if menu == "Início":
     adicionar_fundo("fundo_home.jpg") 
     
-    # Truque das 3 colunas para centralizar a imagem principal
     col_vazia1, col_logo_centro, col_vazia2 = st.columns([1, 2, 1])
     with col_logo_centro:
         if os.path.exists("Logo AD Pereiro H.png"):
@@ -178,6 +192,72 @@ elif menu == "Cadastrar Professor":
             st.success("Professor salvo com sucesso!")
         else:
             st.warning("Preencha o nome do professor.")
+
+# --- TELA RESTAURADA: EDITAR CADASTROS ---
+elif menu == "Editar Cadastros":
+    adicionar_fundo("fundo_home.jpg") # Usa o mesmo fundo da home ou se quiser crie um fundo_editar.jpg
+    st.title("✏️ Consultar e Editar Cadastros")
+    
+    tipo_edicao = st.radio("O que você deseja buscar?", ["Aluno", "Professor"], horizontal=True)
+    
+    aba_alvo = ABA_MATRICULADOS if tipo_edicao == "Aluno" else ABA_PROFESSORES
+    df = carregar_dados(aba_alvo)
+    
+    if df.empty:
+        st.info(f"Nenhum {tipo_edicao.lower()} encontrado.")
+    else:
+        col_filtro1, col_filtro2 = st.columns(2)
+        with col_filtro1:
+            filtro_cong = st.selectbox("Filtrar Congregação:", ["Todas"] + CONGREGACOES)
+        with col_filtro2:
+            filtro_sala = st.selectbox("Filtrar Sala:", ["Todas"] + SALAS)
+        
+        df_filtrado = df.copy()
+        if filtro_cong != "Todas":
+            df_filtrado = df_filtrado[df_filtrado["Congregação"] == filtro_cong]
+        if filtro_sala != "Todas":
+            df_filtrado = df_filtrado[df_filtrado["Sala"] == filtro_sala]
+            
+        if df_filtrado.empty:
+            st.warning("Ninguém encontrado com esses filtros.")
+        else:
+            pessoa_selecionada = st.selectbox(f"Selecione o {tipo_edicao.lower()} para editar:", df_filtrado["Nome"].tolist())
+            
+            dados_pessoa = df_filtrado[df_filtrado["Nome"] == pessoa_selecionada].iloc[0]
+            linha_planilha = int(dados_pessoa["Linha_Planilha"])
+            
+            st.markdown("---")
+            st.markdown(f"### ✏️ Editando: {pessoa_selecionada}")
+            
+            with st.form("form_edicao"):
+                e_nome = st.text_input("Nome", dados_pessoa.get("Nome", ""))
+                
+                whats_atual = str(dados_pessoa.get("Whatsapp", "")) if "Whatsapp" in dados_pessoa else str(dados_pessoa.get("Telefone", ""))
+                e_whatsapp = st.text_input("Whatsapp/Telefone", whats_atual)
+                
+                try: idx_cong = CONGREGACOES.index(dados_pessoa.get("Congregação", "Sede"))
+                except: idx_cong = 0
+                e_cong = st.selectbox("Congregação", CONGREGACOES, index=idx_cong)
+                
+                try: idx_sala = SALAS.index(dados_pessoa.get("Sala", "Adultos"))
+                except: idx_sala = 0
+                e_sala = st.selectbox("Sala", SALAS, index=idx_sala)
+                
+                if tipo_edicao == "Aluno":
+                    try: idx_trim = TRIMESTRES.index(dados_pessoa.get("Trimestre", "1º Trimestre"))
+                    except: idx_trim = 0
+                    e_trimestre = st.selectbox("Trimestre", TRIMESTRES, index=idx_trim)
+                
+                if st.form_submit_button("💾 Salvar Alterações"):
+                    data_original = str(dados_pessoa.get("Data", datetime.now().strftime("%d/%m/%Y")))
+                    
+                    if tipo_edicao == "Aluno":
+                        nova_lista = [data_original, e_nome, e_whatsapp, e_cong, e_sala, e_trimestre]
+                    else:
+                        nova_lista = [data_original, e_nome, e_whatsapp, e_cong, e_sala]
+                        
+                    atualizar_linha(aba_alvo, linha_planilha, nova_lista)
+                    st.success("✅ Dados atualizados com sucesso no Google Sheets! Atualize a página para ver.")
 
 elif menu == "Realizar Chamada":
     adicionar_fundo("fundo_chamada.jpg")
