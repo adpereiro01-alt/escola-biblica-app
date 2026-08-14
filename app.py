@@ -123,7 +123,7 @@ if menu == "Início":
     st.write("A Escola Bíblica Dominical é o coração da nossa igreja. Aqui estudamos a Palavra de Deus, formamos o caráter cristão e fortalecemos nossa fé através de um ensino dedicado e inspirado.")
     
     st.markdown("---")
-    st.markdown("### Nossa Liderança")
+    st.markdown("### Nosso Time")
     
     col_pastor, col_super = st.columns(2)
     with col_pastor:
