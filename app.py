@@ -239,10 +239,13 @@ elif menu == "Relatórios":
         aba_escolhida = st.radio("Filtrar por:", ["Visão Geral", "Trimestre", "Dia Específico"], horizontal=True)
         st.markdown("---")
         
+        titulo_destaque = "🏆 Destaques Gerais (Todas as Datas)"
+        
         if aba_escolhida == "Trimestre":
             trim_escolhido = st.selectbox("Selecione:", TRIMESTRES)
             if not df_c.empty: df_c = df_c[df_c["Trimestre"] == trim_escolhido]
             if not df_o.empty: df_o = df_o[df_o["Trimestre"] == trim_escolhido]
+            titulo_destaque = f"🏆 Destaques do {trim_escolhido}"
             
         elif aba_escolhida == "Dia Específico":
             todas_datas = set()
@@ -250,11 +253,17 @@ elif menu == "Relatórios":
             if not df_o.empty: todas_datas.update(df_o["Data"].astype(str).unique())
             todas_datas = sorted([d for d in todas_datas if d.strip()], reverse=True)
             
-            data_filtro = st.selectbox("Data:", todas_datas)
-            if not df_c.empty: df_c = df_c[df_c["Data"].astype(str) == data_filtro]
-            if not df_o.empty: df_o = df_o[df_o["Data"].astype(str) == data_filtro]
+            if todas_datas:
+                data_filtro = st.selectbox("Selecione a Data:", todas_datas)
+                if not df_c.empty: df_c = df_c[df_c["Data"].astype(str) == data_filtro]
+                if not df_o.empty: df_o = df_o[df_o["Data"].astype(str) == data_filtro]
+                titulo_destaque = f"🏆 Destaques do Dia: {data_filtro}"
+            else:
+                st.warning("Nenhuma data encontrada nas planilhas.")
         
-        st.markdown("### 🏆 Destaques")
+        # Exibe o título dinâmico para confirmar o filtro
+        st.markdown(f"### {titulo_destaque}")
+        
         maior_presenca = maior_biblia = maior_revista = maior_oferta = "-"
         
         if not df_c.empty and "Sala" in df_c.columns:
@@ -265,10 +274,14 @@ elif menu == "Relatórios":
             if "Bíblias" in df_o.columns:
                 b = df_o.groupby("Sala")["Bíblias"].sum()
                 if not b.empty and b.max() > 0: maior_biblia = f"{b.idxmax()} ({int(b.max())})"
+            
             if "Revistas" in df_o.columns:
                 r = df_o.groupby("Sala")["Revistas"].sum()
                 if not r.empty and r.max() > 0: maior_revista = f"{r.idxmax()} ({int(r.max())})"
+            
             if "Valor Total" in df_o.columns:
+                # Tratamento de segurança para converter vírgula em ponto antes de somar dinheiro
+                df_o['Valor Total'] = pd.to_numeric(df_o['Valor Total'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
                 o = df_o.groupby("Sala")["Valor Total"].sum()
                 if not o.empty and o.max() > 0: maior_oferta = f"{o.idxmax()} (R$ {o.max():.2f})"
         
