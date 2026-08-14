@@ -91,7 +91,7 @@ st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout
 with st.sidebar:
     # Logo na barra lateral (fica perfeito com fundo branco)
     if os.path.exists("Logo AD Pereiro H.png"):
-        st.image("Logo AD Pereiro H.png", use_column_width=True)
+        st.image("Logo AD Pereiro H.png", use_container_width=True)
     
     st.markdown("---")
     
