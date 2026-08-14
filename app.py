@@ -87,38 +87,37 @@ def adicionar_fundo(nome_arquivo):
 # --- CONFIGURAÇÃO DE PÁGINA ---
 st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout="wide")
 
-# --- MENU SUPERIOR ---
-menu = option_menu(
-    menu_title=None,
-    options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"],
-    icons=["house", "person-add", "easel", "card-checklist", "bar-chart"], 
-    default_index=0,
-    orientation="horizontal",
-    styles={
-        "container": {"padding": "0!important", "background-color": "#111"},
-        "icon": {"color": "#ff6600", "font-size": "18px"},
-        "nav-link": {"font-size": "16px", "text-align": "center", "margin":"0px", "color": "#fff", "--hover-color": "#333"},
-        "nav-link-selected": {"background-color": "#ff6600", "color": "#fff"},
-    }
-)
-st.markdown("---")
+# --- BARRA LATERAL (SIDEBAR) ---
+with st.sidebar:
+    # Logo na barra lateral (fica perfeito com fundo branco)
+    if os.path.exists("Logo AD Pereiro H.png"):
+        st.image("Logo AD Pereiro H.png", use_column_width=True)
+    
+    st.markdown("---")
+    
+    # Menu moderno dentro da barra lateral
+    menu = option_menu(
+        menu_title="Menu Principal",
+        options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"],
+        icons=["house", "person-add", "easel", "card-checklist", "bar-chart"], 
+        default_index=0,
+        styles={
+            "container": {"padding": "0!important", "background-color": "transparent"},
+            "icon": {"color": "#ff6600", "font-size": "18px"},
+            "nav-link": {"font-size": "16px", "text-align": "left", "margin":"5px 0px", "--hover-color": "#eee"},
+            "nav-link-selected": {"background-color": "#ff6600", "color": "white"},
+        }
+    )
 
-# Se NÃO estiver na tela "Início", mostra o Cabeçalho com a Logo
+# Título padrão para as páginas que não são a Início
 if menu != "Início":
-    col_logo, col_titulo = st.columns([1, 3]) 
-    with col_logo:
-        if os.path.exists("Logo AD Pereiro H.png"):
-            st.image("Logo AD Pereiro H.png", width=250)
-    with col_titulo:
-        st.markdown("<br>", unsafe_allow_html=True) 
-        st.markdown("## Sistema de Controle de Escola Bíblica")
+    st.markdown("## Sistema de Controle de Escola Bíblica")
     st.markdown("---")
 
 # --- TELAS ---
 if menu == "Início":
-    adicionar_fundo("fundo_home.jpg") # Puxa a foto de fundo da igreja
+    adicionar_fundo("fundo_home.jpg") 
     
-    st.image("Logo AD Pereiro H.png", width=400) # Logo maior na capa
     st.title("Bem-vindo à Escola Bíblica Dominical")
     st.markdown("### Assembleia de Deus Templo Central - Pereiro-CE")
     st.write("A Escola Bíblica Dominical é o coração da nossa igreja. Aqui estudamos a Palavra de Deus, formamos o caráter cristão e fortalecemos nossa fé através de um ensino dedicado e inspirado.")
