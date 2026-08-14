@@ -47,12 +47,10 @@ def salvar_linha(aba, dados_lista):
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
 
-# Função resgatada para atualizar dados existentes!
 def atualizar_linha(aba, row_index, dados_lista):
     try:
         client = conectar_sheets()
         sheet = client.open(NOME_PLANILHA).worksheet(aba)
-        # Define até qual coluna atualizar baseado no tamanho da lista
         letras = "ABCDEFGH"
         ultima_letra = letras[len(dados_lista)-1]
         cell_list = sheet.range(f'A{row_index}:{ultima_letra}{row_index}')
@@ -61,6 +59,15 @@ def atualizar_linha(aba, row_index, dados_lista):
         sheet.update_cells(cell_list)
     except Exception as e:
         st.error(f"Erro ao atualizar: {e}")
+
+# NOVA FUNÇÃO PARA EXCLUIR ALUNO OU PROFESSOR DA PLANILHA
+def excluir_linha(aba, row_index):
+    try:
+        client = conectar_sheets()
+        sheet = client.open(NOME_PLANILHA).worksheet(aba)
+        sheet.delete_rows(row_index)
+    except Exception as e:
+        st.error(f"Erro ao excluir: {e}")
 
 def obter_trimestre(data_str):
     try:
@@ -72,7 +79,6 @@ def obter_trimestre(data_str):
     except:
         return "1º Trimestre"
 
-# --- FUNÇÃO PARA IMAGEM DE FUNDO ---
 def adicionar_fundo(nome_arquivo):
     if os.path.exists(nome_arquivo):
         with open(nome_arquivo, "rb") as image_file:
@@ -110,9 +116,9 @@ with st.sidebar:
     
     menu = option_menu(
         menu_title="Menu Principal",
-        # Adicionei a tela "Editar Cadastros" aqui embaixo
-        options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Editar Cadastros", "Realizar Chamada", "Relatórios"],
-        icons=["house", "person-add", "easel", "pencil-square", "card-checklist", "bar-chart"], 
+        # Nome da tela alterado para Consultar Cadastros
+        options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Consultar Cadastros", "Realizar Chamada", "Relatórios"],
+        icons=["house", "person-add", "easel", "search", "card-checklist", "bar-chart"], 
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "transparent"},
@@ -193,10 +199,10 @@ elif menu == "Cadastrar Professor":
         else:
             st.warning("Preencha o nome do professor.")
 
-# --- TELA RESTAURADA: EDITAR CADASTROS ---
-elif menu == "Editar Cadastros":
-    adicionar_fundo("fundo_home.jpg") # Usa o mesmo fundo da home ou se quiser crie um fundo_editar.jpg
-    st.title("✏️ Consultar e Editar Cadastros")
+# --- TELA REFORMULADA: CONSULTAR CADASTROS (COM EXCLUSÃO E EDIÇÃO) ---
+elif menu == "Consultar Cadastros":
+    adicionar_fundo("fundo_home.jpg")
+    st.title("🔍 Consultar Cadastros")
     
     tipo_edicao = st.radio("O que você deseja buscar?", ["Aluno", "Professor"], horizontal=True)
     
@@ -221,43 +227,65 @@ elif menu == "Editar Cadastros":
         if df_filtrado.empty:
             st.warning("Ninguém encontrado com esses filtros.")
         else:
-            pessoa_selecionada = st.selectbox(f"Selecione o {tipo_edicao.lower()} para editar:", df_filtrado["Nome"].tolist())
+            pessoa_selecionada = st.selectbox(f"Selecione o {tipo_edicao.lower()}:", df_filtrado["Nome"].tolist())
             
             dados_pessoa = df_filtrado[df_filtrado["Nome"] == pessoa_selecionada].iloc[0]
             linha_planilha = int(dados_pessoa["Linha_Planilha"])
+            whats_atual = str(dados_pessoa.get("Whatsapp", "")) if "Whatsapp" in dados_pessoa else str(dados_pessoa.get("Telefone", ""))
             
             st.markdown("---")
-            st.markdown(f"### ✏️ Editando: {pessoa_selecionada}")
+            st.markdown(f"### 👤 {pessoa_selecionada}")
             
-            with st.form("form_edicao"):
-                e_nome = st.text_input("Nome", dados_pessoa.get("Nome", ""))
+            # Exibe as informações como um "cartão de perfil"
+            c1, c2, c3 = st.columns(3)
+            c1.write(f"**📱 WhatsApp:** {whats_atual if whats_atual else 'Não informado'}")
+            c2.write(f"**📍 Congregação:** {dados_pessoa.get('Congregação', '')}")
+            c3.write(f"**🚪 Sala:** {dados_pessoa.get('Sala', '')}")
+            
+            if tipo_edicao == "Aluno":
+                st.write(f"**📅 Trimestre Matriculado:** {dados_pessoa.get('Trimestre', '')}")
                 
-                whats_atual = str(dados_pessoa.get("Whatsapp", "")) if "Whatsapp" in dados_pessoa else str(dados_pessoa.get("Telefone", ""))
-                e_whatsapp = st.text_input("Whatsapp/Telefone", whats_atual)
-                
-                try: idx_cong = CONGREGACOES.index(dados_pessoa.get("Congregação", "Sede"))
-                except: idx_cong = 0
-                e_cong = st.selectbox("Congregação", CONGREGACOES, index=idx_cong)
-                
-                try: idx_sala = SALAS.index(dados_pessoa.get("Sala", "Adultos"))
-                except: idx_sala = 0
-                e_sala = st.selectbox("Sala", SALAS, index=idx_sala)
-                
-                if tipo_edicao == "Aluno":
-                    try: idx_trim = TRIMESTRES.index(dados_pessoa.get("Trimestre", "1º Trimestre"))
-                    except: idx_trim = 0
-                    e_trimestre = st.selectbox("Trimestre", TRIMESTRES, index=idx_trim)
-                
-                if st.form_submit_button("💾 Salvar Alterações"):
-                    data_original = str(dados_pessoa.get("Data", datetime.now().strftime("%d/%m/%Y")))
-                    
-                    if tipo_edicao == "Aluno":
-                        nova_lista = [data_original, e_nome, e_whatsapp, e_cong, e_sala, e_trimestre]
-                    else:
-                        nova_lista = [data_original, e_nome, e_whatsapp, e_cong, e_sala]
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # --- BOTÕES DE AÇÃO: EDITAR E EXCLUIR ---
+            col_btn1, col_btn2 = st.columns([1, 1])
+            
+            with col_btn1:
+                # O Expander funciona como uma "gaveta" que abre e fecha para editar
+                with st.expander("✏️ Editar Cadastro"):
+                    with st.form("form_edicao"):
+                        e_nome = st.text_input("Nome", dados_pessoa.get("Nome", ""))
+                        e_whatsapp = st.text_input("Whatsapp/Telefone", whats_atual)
                         
-                    atualizar_linha(aba_alvo, linha_planilha, nova_lista)
-                    st.success("✅ Dados atualizados com sucesso no Google Sheets! Atualize a página para ver.")
+                        try: idx_cong = CONGREGACOES.index(dados_pessoa.get("Congregação", "Sede"))
+                        except: idx_cong = 0
+                        e_cong = st.selectbox("Congregação", CONGREGACOES, index=idx_cong)
+                        
+                        try: idx_sala = SALAS.index(dados_pessoa.get("Sala", "Adultos"))
+                        except: idx_sala = 0
+                        e_sala = st.selectbox("Sala", SALAS, index=idx_sala)
+                        
+                        if tipo_edicao == "Aluno":
+                            try: idx_trim = TRIMESTRES.index(dados_pessoa.get("Trimestre", "1º Trimestre"))
+                            except: idx_trim = 0
+                            e_trimestre = st.selectbox("Trimestre", TRIMESTRES, index=idx_trim)
+                        
+                        if st.form_submit_button("💾 Salvar Alterações"):
+                            data_original = str(dados_pessoa.get("Data", datetime.now().strftime("%d/%m/%Y")))
+                            if tipo_edicao == "Aluno":
+                                nova_lista = [data_original, e_nome, e_whatsapp, e_cong, e_sala, e_trimestre]
+                            else:
+                                nova_lista = [data_original, e_nome, e_whatsapp, e_cong, e_sala]
+                                
+                            atualizar_linha(aba_alvo, linha_planilha, nova_lista)
+                            st.success("✅ Dados atualizados com sucesso no Google Sheets! Atualize a página para ver.")
+                            
+            with col_btn2:
+                # Botão de exclusão (type="primary" deixa ele em destaque)
+                if st.button("🗑️ Excluir Cadastro", type="primary"):
+                    excluir_linha(aba_alvo, linha_planilha)
+                    st.success(f"{pessoa_selecionada} excluído(a) com sucesso!")
+                    st.rerun() # Atualiza a tela imediatamente para o nome sumir da lista
 
 elif menu == "Realizar Chamada":
     adicionar_fundo("fundo_chamada.jpg")
