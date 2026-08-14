@@ -89,13 +89,11 @@ st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout
 
 # --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    # Logo na barra lateral (fica perfeito com fundo branco)
     if os.path.exists("Logo AD Pereiro H.png"):
         st.image("Logo AD Pereiro H.png", use_container_width=True)
     
     st.markdown("---")
     
-    # Menu moderno dentro da barra lateral
     menu = option_menu(
         menu_title="Menu Principal",
         options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Realizar Chamada", "Relatórios"],
@@ -109,21 +107,33 @@ with st.sidebar:
         }
     )
 
-# Título padrão para as páginas que não são a Início
+# --- CABEÇALHO PARA PÁGINAS INTERNAS ---
 if menu != "Início":
-    st.markdown("## Sistema de Controle de Escola Bíblica")
+    col_logo_peq, col_titulo = st.columns([1, 4])
+    with col_logo_peq:
+        if os.path.exists("Logo AD Pereiro H.png"):
+            st.image("Logo AD Pereiro H.png", use_container_width=True)
+    with col_titulo:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("## Sistema de Controle de EBD")
     st.markdown("---")
 
 # --- TELAS ---
 if menu == "Início":
     adicionar_fundo("fundo_home.jpg") 
     
-    st.title("Bem-vindo à Escola Bíblica Dominical")
-    st.markdown("### Assembleia de Deus Templo Central - Pereiro-CE")
-    st.write("A Escola Bíblica Dominical é o coração da nossa igreja. Aqui estudamos a Palavra de Deus, formamos o caráter cristão e fortalecemos nossa fé através de um ensino dedicado e inspirado.")
+    # Truque das 3 colunas para centralizar a imagem principal
+    col_vazia1, col_logo_centro, col_vazia2 = st.columns([1, 2, 1])
+    with col_logo_centro:
+        if os.path.exists("Logo AD Pereiro H.png"):
+            st.image("Logo AD Pereiro H.png", use_container_width=True)
+    
+    st.markdown("<h1 style='text-align: center;'>Bem-vindo à Escola Bíblica Dominical</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #555;'>Assembleia de Deus Templo Central - Pereiro-CE</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 18px;'>A Escola Bíblica Dominical é o coração da nossa igreja. Aqui estudamos a Palavra de Deus, formamos o caráter cristão e fortalecemos nossa fé através de um ensino dedicado e inspirado.</p>", unsafe_allow_html=True)
     
     st.markdown("---")
-    st.markdown("### Nossa Equipe")
+    st.markdown("<h3 style='text-align: center;'>Nossa Liderança</h3>", unsafe_allow_html=True)
     
     col_pastor, col_super = st.columns(2)
     with col_pastor:
@@ -261,7 +271,6 @@ elif menu == "Relatórios":
             else:
                 st.warning("Nenhuma data encontrada nas planilhas.")
         
-        # Exibe o título dinâmico para confirmar o filtro
         st.markdown(f"### {titulo_destaque}")
         
         maior_presenca = maior_biblia = maior_revista = maior_oferta = "-"
@@ -280,7 +289,6 @@ elif menu == "Relatórios":
                 if not r.empty and r.max() > 0: maior_revista = f"{r.idxmax()} ({int(r.max())})"
             
             if "Valor Total" in df_o.columns:
-                # Tratamento de segurança para converter vírgula em ponto antes de somar dinheiro
                 df_o['Valor Total'] = pd.to_numeric(df_o['Valor Total'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
                 o = df_o.groupby("Sala")["Valor Total"].sum()
                 if not o.empty and o.max() > 0: maior_oferta = f"{o.idxmax()} (R$ {o.max():.2f})"
