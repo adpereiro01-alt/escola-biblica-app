@@ -25,6 +25,8 @@ def conectar_sheets():
     client = gspread.authorize(creds)
     return client
 
+# O superpoder: Guarda os dados na memória por 60 segundos para não estourar o limite do Google
+@st.cache_data(ttl=60)
 def carregar_dados(aba):
     try:
         client = conectar_sheets()
@@ -44,6 +46,7 @@ def salvar_linha(aba, dados_lista):
         client = conectar_sheets()
         sheet = client.open(NOME_PLANILHA).worksheet(aba)
         sheet.append_row(dados_lista)
+        carregar_dados.clear() # Limpa a memória para carregar os novos dados
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
 
@@ -57,6 +60,7 @@ def atualizar_linha(aba, row_index, dados_lista):
         for i, val in enumerate(dados_lista):
             cell_list[i].value = val
         sheet.update_cells(cell_list)
+        carregar_dados.clear() # Limpa a memória
     except Exception as e:
         st.error(f"Erro ao atualizar: {e}")
 
@@ -65,6 +69,7 @@ def excluir_linha(aba, row_index):
         client = conectar_sheets()
         sheet = client.open(NOME_PLANILHA).worksheet(aba)
         sheet.delete_rows(row_index)
+        carregar_dados.clear() # Limpa a memória
     except Exception as e:
         st.error(f"Erro ao excluir: {e}")
 
@@ -315,7 +320,9 @@ elif menu == "Realizar Chamada":
     
     st.markdown("### 👥 Alunos Presentes")
     if alunos_sala:
-        presencas = {a: st.checkbox(a) for a in alunos_sala}
+        presencas = {}
+        for i, a in enumerate(alunos_sala):
+            presencas[f"{i}_{a}"] = st.checkbox(a, key=f"chk_{i}_{a}")
     else:
         st.info("Nenhum aluno cadastrado nesta sala.")
         presencas = {}
@@ -335,14 +342,14 @@ elif menu == "Realizar Chamada":
             st.error("Informe quem foi o professor do dia.")
         else:
             data = datetime.now().strftime("%d/%m/%Y")
-            for a, pres in presencas.items():
+            for chave, pres in presencas.items():
                 if pres:
-                    salvar_linha(ABA_CHAMADAS, [data, cong, sala, a, "Sim"])
+                    nome_aluno = chave.split("_", 1)[1]
+                    salvar_linha(ABA_CHAMADAS, [data, cong, sala, nome_aluno, "Sim"])
             
             salvar_linha(ABA_OFERTAS, [data, cong, sala, prof_dia, visitantes, qtd_biblias, qtd_revistas, oferta])
             st.success("Chamada salva com sucesso!")
 
-# --- TELA REFORMULADA: RELATÓRIOS ---
 elif menu == "Relatórios":
     adicionar_fundo("fundo_relatorio.jpg")
     st.title("📊 Relatórios e Estatísticas")
@@ -350,7 +357,6 @@ elif menu == "Relatórios":
     df_o = carregar_dados(ABA_OFERTAS)
     
     if not df_c.empty or not df_o.empty:
-        # Limpeza de dados de Ofertas
         if not df_o.empty:
             for col_num in ["Visitantes", "Bíblias", "Revistas", "Valor Total"]:
                 if col_num in df_o.columns:
@@ -364,12 +370,10 @@ elif menu == "Relatórios":
         if not df_o.empty and "Data" in df_o.columns:
             df_o["Trimestre"] = df_o["Data"].astype(str).apply(obter_trimestre)
             
-        # Ocultamos a Visão Geral, focando só no Trimestre e no Dia!
         aba_escolhida = st.radio("Selecione a Visão:", ["Visão Trimestral", "Dia Específico"], horizontal=True)
         st.markdown("---")
         
         if aba_escolhida == "Visão Trimestral":
-            # Puxa o trimestre atual de forma inteligente para já vir selecionado
             trim_atual = obter_trimestre_atual()
             try:
                 idx_trim = TRIMESTRES.index(trim_atual)
@@ -382,7 +386,6 @@ elif menu == "Relatórios":
             df_c_trim = df_c[df_c["Trimestre"] == trim_escolhido] if not df_c.empty else pd.DataFrame()
             df_o_trim = df_o[df_o["Trimestre"] == trim_escolhido] if not df_o.empty else pd.DataFrame()
             
-            # Cálculo dos totais para descobrir as porcentagens
             total_pres = len(df_c_trim)
             total_bib = df_o_trim["Bíblias"].sum() if not df_o_trim.empty and "Bíblias" in df_o_trim.columns else 0
             total_rev = df_o_trim["Revistas"].sum() if not df_o_trim.empty and "Revistas" in df_o_trim.columns else 0
@@ -390,7 +393,6 @@ elif menu == "Relatórios":
             
             maior_presenca = maior_biblia = maior_revista = maior_oferta = "-"
             
-            # Encontrando o pódio e calculando as porcentagens (%)
             if total_pres > 0 and "Sala" in df_c_trim.columns:
                 p = df_c_trim.groupby("Sala").size()
                 if not p.empty:
@@ -469,7 +471,6 @@ elif menu == "Relatórios":
                     if col in rel_final.columns:
                         rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
                 
-                # ADICIONANDO A LINHA DE TOTAL GERAL
                 if not rel_final.empty:
                     total_row = pd.DataFrame([{
                         "Sala": "TOTAL GERAL",
@@ -479,7 +480,6 @@ elif menu == "Relatórios":
                         "Revistas": int(rel_final.get("Revistas", pd.Series([0])).sum()),
                         "Valor Total": rel_final.get("Valor Total", pd.Series([0])).sum()
                     }])
-                    # Usando concat (método moderno e sem erro do pandas) para adicionar a linha final
                     rel_final = pd.concat([rel_final, total_row], ignore_index=True)
                     
                 st.dataframe(rel_final, use_container_width=True)
