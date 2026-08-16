@@ -60,7 +60,6 @@ def atualizar_linha(aba, row_index, dados_lista):
     except Exception as e:
         st.error(f"Erro ao atualizar: {e}")
 
-# NOVA FUNÇÃO PARA EXCLUIR ALUNO OU PROFESSOR DA PLANILHA
 def excluir_linha(aba, row_index):
     try:
         client = conectar_sheets()
@@ -78,6 +77,13 @@ def obter_trimestre(data_str):
         else: return "4º Trimestre"
     except:
         return "1º Trimestre"
+
+def obter_trimestre_atual():
+    mes = datetime.now().month
+    if mes <= 3: return "1º Trimestre"
+    elif mes <= 6: return "2º Trimestre"
+    elif mes <= 9: return "3º Trimestre"
+    else: return "4º Trimestre"
 
 def adicionar_fundo(nome_arquivo):
     if os.path.exists(nome_arquivo):
@@ -116,7 +122,6 @@ with st.sidebar:
     
     menu = option_menu(
         menu_title="Menu Principal",
-        # Nome da tela alterado para Consultar Cadastros
         options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Consultar Cadastros", "Realizar Chamada", "Relatórios"],
         icons=["house", "person-add", "easel", "search", "card-checklist", "bar-chart"], 
         default_index=0,
@@ -199,7 +204,6 @@ elif menu == "Cadastrar Professor":
         else:
             st.warning("Preencha o nome do professor.")
 
-# --- TELA REFORMULADA: CONSULTAR CADASTROS (COM EXCLUSÃO E EDIÇÃO) ---
 elif menu == "Consultar Cadastros":
     adicionar_fundo("fundo_home.jpg")
     st.title("🔍 Consultar Cadastros")
@@ -236,7 +240,6 @@ elif menu == "Consultar Cadastros":
             st.markdown("---")
             st.markdown(f"### 👤 {pessoa_selecionada}")
             
-            # Exibe as informações como um "cartão de perfil"
             c1, c2, c3 = st.columns(3)
             c1.write(f"**📱 WhatsApp:** {whats_atual if whats_atual else 'Não informado'}")
             c2.write(f"**📍 Congregação:** {dados_pessoa.get('Congregação', '')}")
@@ -247,11 +250,9 @@ elif menu == "Consultar Cadastros":
                 
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # --- BOTÕES DE AÇÃO: EDITAR E EXCLUIR ---
             col_btn1, col_btn2 = st.columns([1, 1])
             
             with col_btn1:
-                # O Expander funciona como uma "gaveta" que abre e fecha para editar
                 with st.expander("✏️ Editar Cadastro"):
                     with st.form("form_edicao"):
                         e_nome = st.text_input("Nome", dados_pessoa.get("Nome", ""))
@@ -281,11 +282,10 @@ elif menu == "Consultar Cadastros":
                             st.success("✅ Dados atualizados com sucesso no Google Sheets! Atualize a página para ver.")
                             
             with col_btn2:
-                # Botão de exclusão (type="primary" deixa ele em destaque)
                 if st.button("🗑️ Excluir Cadastro", type="primary"):
                     excluir_linha(aba_alvo, linha_planilha)
                     st.success(f"{pessoa_selecionada} excluído(a) com sucesso!")
-                    st.rerun() # Atualiza a tela imediatamente para o nome sumir da lista
+                    st.rerun() 
 
 elif menu == "Realizar Chamada":
     adicionar_fundo("fundo_chamada.jpg")
@@ -342,6 +342,7 @@ elif menu == "Realizar Chamada":
             salvar_linha(ABA_OFERTAS, [data, cong, sala, prof_dia, visitantes, qtd_biblias, qtd_revistas, oferta])
             st.success("Chamada salva com sucesso!")
 
+# --- TELA REFORMULADA: RELATÓRIOS ---
 elif menu == "Relatórios":
     adicionar_fundo("fundo_relatorio.jpg")
     st.title("📊 Relatórios e Estatísticas")
@@ -349,21 +350,99 @@ elif menu == "Relatórios":
     df_o = carregar_dados(ABA_OFERTAS)
     
     if not df_c.empty or not df_o.empty:
+        # Limpeza de dados de Ofertas
+        if not df_o.empty:
+            for col_num in ["Visitantes", "Bíblias", "Revistas", "Valor Total"]:
+                if col_num in df_o.columns:
+                    if col_num == "Valor Total":
+                        df_o[col_num] = pd.to_numeric(df_o[col_num].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+                    else:
+                        df_o[col_num] = pd.to_numeric(df_o[col_num], errors='coerce').fillna(0)
+
         if not df_c.empty and "Data" in df_c.columns:
             df_c["Trimestre"] = df_c["Data"].astype(str).apply(obter_trimestre)
         if not df_o.empty and "Data" in df_o.columns:
             df_o["Trimestre"] = df_o["Data"].astype(str).apply(obter_trimestre)
             
-        aba_escolhida = st.radio("Filtrar por:", ["Visão Geral", "Trimestre", "Dia Específico"], horizontal=True)
+        # Ocultamos a Visão Geral, focando só no Trimestre e no Dia!
+        aba_escolhida = st.radio("Selecione a Visão:", ["Visão Trimestral", "Dia Específico"], horizontal=True)
         st.markdown("---")
         
-        titulo_destaque = "🏆 Destaques Gerais (Todas as Datas)"
-        
-        if aba_escolhida == "Trimestre":
-            trim_escolhido = st.selectbox("Selecione:", TRIMESTRES)
-            if not df_c.empty: df_c = df_c[df_c["Trimestre"] == trim_escolhido]
-            if not df_o.empty: df_o = df_o[df_o["Trimestre"] == trim_escolhido]
-            titulo_destaque = f"🏆 Destaques do {trim_escolhido}"
+        if aba_escolhida == "Visão Trimestral":
+            # Puxa o trimestre atual de forma inteligente para já vir selecionado
+            trim_atual = obter_trimestre_atual()
+            try:
+                idx_trim = TRIMESTRES.index(trim_atual)
+            except:
+                idx_trim = 0
+                
+            trim_escolhido = st.selectbox("Selecione o Trimestre:", TRIMESTRES, index=idx_trim)
+            st.markdown(f"### 🏆 Destaques do {trim_escolhido} (%)")
+            
+            df_c_trim = df_c[df_c["Trimestre"] == trim_escolhido] if not df_c.empty else pd.DataFrame()
+            df_o_trim = df_o[df_o["Trimestre"] == trim_escolhido] if not df_o.empty else pd.DataFrame()
+            
+            # Cálculo dos totais para descobrir as porcentagens
+            total_pres = len(df_c_trim)
+            total_bib = df_o_trim["Bíblias"].sum() if not df_o_trim.empty and "Bíblias" in df_o_trim.columns else 0
+            total_rev = df_o_trim["Revistas"].sum() if not df_o_trim.empty and "Revistas" in df_o_trim.columns else 0
+            total_of = df_o_trim["Valor Total"].sum() if not df_o_trim.empty and "Valor Total" in df_o_trim.columns else 0
+            
+            maior_presenca = maior_biblia = maior_revista = maior_oferta = "-"
+            
+            # Encontrando o pódio e calculando as porcentagens (%)
+            if total_pres > 0 and "Sala" in df_c_trim.columns:
+                p = df_c_trim.groupby("Sala").size()
+                if not p.empty:
+                    pct = (p.max() / total_pres) * 100
+                    maior_presenca = f"{p.idxmax()} ({pct:.1f}%)"
+                    
+            if not df_o_trim.empty and "Sala" in df_o_trim.columns:
+                if total_bib > 0:
+                    b = df_o_trim.groupby("Sala")["Bíblias"].sum()
+                    if not b.empty and b.max() > 0:
+                        pct = (b.max() / total_bib) * 100
+                        maior_biblia = f"{b.idxmax()} ({pct:.1f}%)"
+                        
+                if total_rev > 0:
+                    r = df_o_trim.groupby("Sala")["Revistas"].sum()
+                    if not r.empty and r.max() > 0:
+                        pct = (r.max() / total_rev) * 100
+                        maior_revista = f"{r.idxmax()} ({pct:.1f}%)"
+                        
+                if total_of > 0:
+                    o = df_o_trim.groupby("Sala")["Valor Total"].sum()
+                    if not o.empty and o.max() > 0:
+                        pct = (o.max() / total_of) * 100
+                        maior_oferta = f"{o.idxmax()} ({pct:.1f}%)"
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("🥇 Maior Presença", maior_presenca)
+            c2.metric("📖 Mais Bíblias", maior_biblia)
+            c3.metric("📚 Mais Revistas", maior_revista)
+            c4.metric("💰 Maior Oferta", maior_oferta)
+            
+            st.markdown("---")
+            if not df_o_trim.empty and "Professor" in df_o_trim.columns:
+                st.markdown("### 👨‍🏫 Ranking de Professores no Trimestre")
+                rk = df_o_trim["Professor"].value_counts().reset_index()
+                rk.columns = ["Professor", "Aulas Ministradas"]
+                rk.index = range(1, len(rk) + 1)
+                st.dataframe(rk, use_container_width=True)
+                
+            st.markdown("---")
+            st.markdown("### 📋 Resumo Acumulado do Trimestre")
+            pres_resumo = df_c_trim.groupby("Sala").size().reset_index(name="Presentes") if not df_c_trim.empty and "Sala" in df_c_trim.columns else pd.DataFrame(columns=["Sala", "Presentes"])
+            col_soma = ["Visitantes", "Bíblias", "Revistas", "Valor Total"]
+            col_pres = [c for c in col_soma if not df_o_trim.empty and c in df_o_trim.columns]
+            
+            oferta_resumo = df_o_trim.groupby("Sala")[col_pres].sum().reset_index() if col_pres else pd.DataFrame(columns=["Sala"] + col_soma)
+            rel_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
+            
+            for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
+                if col in rel_final.columns:
+                    rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
+            st.dataframe(rel_final, use_container_width=True)
             
         elif aba_escolhida == "Dia Específico":
             todas_datas = set()
@@ -372,62 +451,39 @@ elif menu == "Relatórios":
             todas_datas = sorted([d for d in todas_datas if d.strip()], reverse=True)
             
             if todas_datas:
-                data_filtro = st.selectbox("Selecione a Data:", todas_datas)
-                if not df_c.empty: df_c = df_c[df_c["Data"].astype(str) == data_filtro]
-                if not df_o.empty: df_o = df_o[df_o["Data"].astype(str) == data_filtro]
-                titulo_destaque = f"🏆 Destaques do Dia: {data_filtro}"
+                data_filtro = st.selectbox("Selecione a Data da Aula:", todas_datas)
+                st.markdown(f"### 📢 Apresentação de Encerramento - {data_filtro}")
+                st.write("Leitura dos resultados para a igreja:")
+                
+                df_c_dia = df_c[df_c["Data"].astype(str) == data_filtro] if not df_c.empty else pd.DataFrame()
+                df_o_dia = df_o[df_o["Data"].astype(str) == data_filtro] if not df_o.empty else pd.DataFrame()
+                
+                pres_resumo = df_c_dia.groupby("Sala").size().reset_index(name="Presentes") if not df_c_dia.empty and "Sala" in df_c_dia.columns else pd.DataFrame(columns=["Sala", "Presentes"])
+                col_soma = ["Visitantes", "Bíblias", "Revistas", "Valor Total"]
+                col_pres = [c for c in col_soma if not df_o_dia.empty and c in df_o_dia.columns]
+                
+                oferta_resumo = df_o_dia.groupby("Sala")[col_pres].sum().reset_index() if col_pres else pd.DataFrame(columns=["Sala"] + col_soma)
+                rel_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
+                
+                for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
+                    if col in rel_final.columns:
+                        rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
+                
+                # ADICIONANDO A LINHA DE TOTAL GERAL
+                if not rel_final.empty:
+                    total_row = pd.DataFrame([{
+                        "Sala": "TOTAL GERAL",
+                        "Presentes": int(rel_final.get("Presentes", pd.Series([0])).sum()),
+                        "Visitantes": int(rel_final.get("Visitantes", pd.Series([0])).sum()),
+                        "Bíblias": int(rel_final.get("Bíblias", pd.Series([0])).sum()),
+                        "Revistas": int(rel_final.get("Revistas", pd.Series([0])).sum()),
+                        "Valor Total": rel_final.get("Valor Total", pd.Series([0])).sum()
+                    }])
+                    # Usando concat (método moderno e sem erro do pandas) para adicionar a linha final
+                    rel_final = pd.concat([rel_final, total_row], ignore_index=True)
+                    
+                st.dataframe(rel_final, use_container_width=True)
             else:
                 st.warning("Nenhuma data encontrada nas planilhas.")
-        
-        st.markdown(f"### {titulo_destaque}")
-        
-        maior_presenca = maior_biblia = maior_revista = maior_oferta = "-"
-        
-        if not df_c.empty and "Sala" in df_c.columns:
-            p = df_c.groupby("Sala").size()
-            if not p.empty: maior_presenca = f"{p.idxmax()} ({p.max()} al.)"
-                
-        if not df_o.empty and "Sala" in df_o.columns:
-            if "Bíblias" in df_o.columns:
-                b = df_o.groupby("Sala")["Bíblias"].sum()
-                if not b.empty and b.max() > 0: maior_biblia = f"{b.idxmax()} ({int(b.max())})"
-            
-            if "Revistas" in df_o.columns:
-                r = df_o.groupby("Sala")["Revistas"].sum()
-                if not r.empty and r.max() > 0: maior_revista = f"{r.idxmax()} ({int(r.max())})"
-            
-            if "Valor Total" in df_o.columns:
-                df_o['Valor Total'] = pd.to_numeric(df_o['Valor Total'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
-                o = df_o.groupby("Sala")["Valor Total"].sum()
-                if not o.empty and o.max() > 0: maior_oferta = f"{o.idxmax()} (R$ {o.max():.2f})"
-        
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🥇 Maior Presença", maior_presenca)
-        c2.metric("📖 Mais Bíblias", maior_biblia)
-        c3.metric("📚 Mais Revistas", maior_revista)
-        c4.metric("💰 Maior Oferta", maior_oferta)
-        
-        st.markdown("---")
-        if not df_o.empty and "Professor" in df_o.columns:
-            st.markdown("### 👨‍🏫 Ranking de Professores")
-            rk = df_o["Professor"].value_counts().reset_index()
-            rk.columns = ["Professor", "Aulas Ministradas"]
-            rk.index = range(1, len(rk) + 1)
-            st.dataframe(rk, use_container_width=True)
-            st.markdown("---")
-        
-        st.markdown("### 📋 Resumo por Sala")
-        pres_resumo = df_c.groupby("Sala").size().reset_index(name="Presentes") if not df_c.empty and "Sala" in df_c.columns else pd.DataFrame(columns=["Sala", "Presentes"])
-        col_soma = ["Visitantes", "Bíblias", "Revistas", "Valor Total"]
-        col_pres = [c for c in col_soma if not df_o.empty and c in df_o.columns]
-        
-        oferta_resumo = df_o.groupby("Sala")[col_pres].sum().reset_index() if col_pres else pd.DataFrame(columns=["Sala"] + col_soma)
-        rel_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
-        
-        for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
-            if col in rel_final.columns:
-                rel_final[col] = rel_final[col].astype(int)
-                
-        st.dataframe(rel_final, use_container_width=True)
     else:
         st.info("Sem dados suficientes para relatórios.")
