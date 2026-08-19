@@ -142,7 +142,6 @@ with st.sidebar:
 # --- CABEÇALHO PARA PÁGINAS INTERNAS ---
 if menu != "Início":
     st.markdown("<br>", unsafe_allow_html=True)
-    # AQUI ESTÁ O SEU NOVO TÍTULO APLICADO!
     st.markdown("## Sistema de Secretária de Escola Bíblica")
     st.markdown("---")
 
@@ -359,11 +358,14 @@ elif menu == "Relatórios":
     df_o = carregar_dados(ABA_OFERTAS)
     
     if not df_c.empty or not df_o.empty:
+        # --- BLINDAGEM DE OFERTAS: AJUSTADO PARA BUSCAR O NOME "Oferta" (SEM O "VALOR TOTAL") ---
         if not df_o.empty:
-            for col_num in ["Visitantes", "Bíblias", "Revistas", "Valor Total"]:
+            for col_num in ["Visitantes", "Bíblias", "Revistas", "Oferta"]:
                 if col_num in df_o.columns:
-                    if col_num == "Valor Total":
-                        df_o[col_num] = pd.to_numeric(df_o[col_num].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+                    if col_num == "Oferta":
+                        # Remove R$, remove espaços em branco e troca vírgula por ponto para fazer a conta
+                        limpo = df_o[col_num].astype(str).str.replace('R$', '', regex=False).str.replace(' ', '', regex=False).str.replace(',', '.')
+                        df_o[col_num] = pd.to_numeric(limpo, errors='coerce').fillna(0.0)
                     else:
                         df_o[col_num] = pd.to_numeric(df_o[col_num], errors='coerce').fillna(0)
 
@@ -391,7 +393,7 @@ elif menu == "Relatórios":
             total_pres = len(df_c_trim)
             total_bib = df_o_trim["Bíblias"].sum() if not df_o_trim.empty and "Bíblias" in df_o_trim.columns else 0
             total_rev = df_o_trim["Revistas"].sum() if not df_o_trim.empty and "Revistas" in df_o_trim.columns else 0
-            total_of = df_o_trim["Valor Total"].sum() if not df_o_trim.empty and "Valor Total" in df_o_trim.columns else 0
+            total_of = df_o_trim["Oferta"].sum() if not df_o_trim.empty and "Oferta" in df_o_trim.columns else 0
             
             maior_presenca = maior_biblia = maior_revista = maior_oferta = "-"
             
@@ -415,7 +417,7 @@ elif menu == "Relatórios":
                         maior_revista = f"{r.idxmax()} ({pct:.1f}%)"
                         
                 if total_of > 0:
-                    o = df_o_trim.groupby("Sala")["Valor Total"].sum()
+                    o = df_o_trim.groupby("Sala")["Oferta"].sum()
                     if not o.empty and o.max() > 0:
                         pct = (o.max() / total_of) * 100
                         maior_oferta = f"{o.idxmax()} ({pct:.1f}%)"
@@ -437,22 +439,22 @@ elif menu == "Relatórios":
             st.markdown("---")
             st.markdown("### 📋 Resumo Acumulado do Trimestre")
             pres_resumo = df_c_trim.groupby("Sala").size().reset_index(name="Presentes") if not df_c_trim.empty and "Sala" in df_c_trim.columns else pd.DataFrame(columns=["Sala", "Presentes"])
-            col_soma = ["Visitantes", "Bíblias", "Revistas", "Valor Total"]
+            col_soma = ["Visitantes", "Bíblias", "Revistas", "Oferta"]
             col_pres = [c for c in col_soma if not df_o_trim.empty and c in df_o_trim.columns]
             
             oferta_resumo = df_o_trim.groupby("Sala")[col_pres].sum().reset_index() if col_pres else pd.DataFrame(columns=["Sala"] + col_soma)
             rel_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
             
-            # --- BLINDAGEM DO NONE E FORMATAÇÃO (TRIMESTRE) ---
-            for col in ["Presentes", "Visitantes", "Bíblias", "Revistas", "Valor Total"]:
+            for col in ["Presentes", "Visitantes", "Bíblias", "Revistas", "Oferta"]:
                 if col not in rel_final.columns:
                     rel_final[col] = 0
 
             for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
                 rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
             
-            # Formata a coluna de Valor Total para exibir R$ bonitinho
-            rel_final["Valor Total"] = rel_final["Valor Total"].apply(lambda x: f"R$ {float(x):.2f}".replace('.', ',') if pd.notnull(x) else "R$ 0,00")
+            # Formata a oferta no final
+            if "Oferta" in rel_final.columns:
+                rel_final["Oferta"] = rel_final["Oferta"].apply(lambda x: f"R$ {float(x):.2f}".replace('.', ',') if pd.notnull(x) else "R$ 0,00")
             
             st.dataframe(rel_final, use_container_width=True)
             
@@ -471,14 +473,13 @@ elif menu == "Relatórios":
                 df_o_dia = df_o[df_o["Data"].astype(str) == data_filtro] if not df_o.empty else pd.DataFrame()
                 
                 pres_resumo = df_c_dia.groupby("Sala").size().reset_index(name="Presentes") if not df_c_dia.empty and "Sala" in df_c_dia.columns else pd.DataFrame(columns=["Sala", "Presentes"])
-                col_soma = ["Visitantes", "Bíblias", "Revistas", "Valor Total"]
+                col_soma = ["Visitantes", "Bíblias", "Revistas", "Oferta"]
                 col_pres = [c for c in col_soma if not df_o_dia.empty and c in df_o_dia.columns]
                 
                 oferta_resumo = df_o_dia.groupby("Sala")[col_pres].sum().reset_index() if col_pres else pd.DataFrame(columns=["Sala"] + col_soma)
                 rel_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
                 
-                # --- BLINDAGEM DO NONE (DIA ESPECÍFICO) ---
-                for col in ["Presentes", "Visitantes", "Bíblias", "Revistas", "Valor Total"]:
+                for col in ["Presentes", "Visitantes", "Bíblias", "Revistas", "Oferta"]:
                     if col not in rel_final.columns:
                         rel_final[col] = 0
 
@@ -488,16 +489,16 @@ elif menu == "Relatórios":
                 if not rel_final.empty:
                     total_row = pd.DataFrame([{
                         "Sala": "TOTAL GERAL",
-                        "Presentes": int(rel_final["Presentes"].sum()),
-                        "Visitantes": int(rel_final["Visitantes"].sum()),
-                        "Bíblias": int(rel_final["Bíblias"].sum()),
-                        "Revistas": int(rel_final["Revistas"].sum()),
-                        "Valor Total": rel_final["Valor Total"].sum()
+                        "Presentes": int(rel_final.get("Presentes", pd.Series([0])).sum()),
+                        "Visitantes": int(rel_final.get("Visitantes", pd.Series([0])).sum()),
+                        "Bíblias": int(rel_final.get("Bíblias", pd.Series([0])).sum()),
+                        "Revistas": int(rel_final.get("Revistas", pd.Series([0])).sum()),
+                        "Oferta": rel_final.get("Oferta", pd.Series([0])).sum() if "Oferta" in rel_final.columns else 0.0
                     }])
                     rel_final = pd.concat([rel_final, total_row], ignore_index=True)
                 
-                # Formata a coluna de Valor Total para exibir R$ bonitinho (incluindo o Total Geral)
-                rel_final["Valor Total"] = rel_final["Valor Total"].apply(lambda x: f"R$ {float(x):.2f}".replace('.', ',') if pd.notnull(x) else "R$ 0,00")
+                if "Oferta" in rel_final.columns:
+                    rel_final["Oferta"] = rel_final["Oferta"].apply(lambda x: f"R$ {float(x):.2f}".replace('.', ',') if pd.notnull(x) else "R$ 0,00")
                     
                 st.dataframe(rel_final, use_container_width=True)
             else:
