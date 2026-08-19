@@ -120,8 +120,8 @@ st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout
 # --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
     # AQUI FICA A LOGO DA SUPERINTENDÊNCIA (Lateral Esquerda)
-    if os.path.exists("Logo EB AD Pereiro.PNG"):
-        st.image("Logo EB AD Pereiro.PNG", use_container_width=True)
+    if os.path.exists("Logo EB AD Pereiro.png"):
+        st.image("Logo EB AD Pereiro.png", use_container_width=True)
     elif os.path.exists("Logo AD Pereiro H.png"):
         st.image("Logo AD Pereiro H.png", use_container_width=True)
     
