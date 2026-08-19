@@ -25,7 +25,6 @@ def conectar_sheets():
     client = gspread.authorize(creds)
     return client
 
-# O superpoder: Guarda os dados na memória por 60 segundos para não estourar o limite do Google
 @st.cache_data(ttl=60)
 def carregar_dados(aba):
     try:
@@ -46,7 +45,7 @@ def salvar_linha(aba, dados_lista):
         client = conectar_sheets()
         sheet = client.open(NOME_PLANILHA).worksheet(aba)
         sheet.append_row(dados_lista)
-        carregar_dados.clear() # Limpa a memória para carregar os novos dados
+        carregar_dados.clear()
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
 
@@ -60,7 +59,7 @@ def atualizar_linha(aba, row_index, dados_lista):
         for i, val in enumerate(dados_lista):
             cell_list[i].value = val
         sheet.update_cells(cell_list)
-        carregar_dados.clear() # Limpa a memória
+        carregar_dados.clear()
     except Exception as e:
         st.error(f"Erro ao atualizar: {e}")
 
@@ -69,7 +68,7 @@ def excluir_linha(aba, row_index):
         client = conectar_sheets()
         sheet = client.open(NOME_PLANILHA).worksheet(aba)
         sheet.delete_rows(row_index)
-        carregar_dados.clear() # Limpa a memória
+        carregar_dados.clear()
     except Exception as e:
         st.error(f"Erro ao excluir: {e}")
 
@@ -120,7 +119,10 @@ st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout
 
 # --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    if os.path.exists("Logo AD Pereiro H.png"):
+    # AQUI ALTERAMOS PARA A LOGO DA SUPERINTENDÊNCIA
+    if os.path.exists("Logo EB AD Pereiro.PNG"):
+        st.image("Logo EB AD Pereiro.PNG", use_container_width=True)
+    elif os.path.exists("Logo AD Pereiro H.png"): # Caso a outra falhe, usa a antiga
         st.image("Logo AD Pereiro H.png", use_container_width=True)
     
     st.markdown("---")
@@ -140,7 +142,8 @@ with st.sidebar:
 
 # --- CABEÇALHO PARA PÁGINAS INTERNAS ---
 if menu != "Início":
-    col_logo_peq, col_titulo = st.columns([1, 4])
+    # AUMENTEI O ESPAÇO AQUI (DE 1 PARA 1.5) PARA A LOGO NÃO FICAR CORTADA NO PC
+    col_logo_peq, col_titulo = st.columns([1.5, 4])
     with col_logo_peq:
         if os.path.exists("Logo AD Pereiro H.png"):
             st.image("Logo AD Pereiro H.png", use_container_width=True)
@@ -153,10 +156,16 @@ if menu != "Início":
 if menu == "Início":
     adicionar_fundo("fundo_home.jpg") 
     
-    col_vazia1, col_logo_centro, col_vazia2 = st.columns([1, 2, 1])
-    with col_logo_centro:
+    # TRUQUE DAS COLUNAS: AGORA TEMOS ESPAÇO PARA AS DUAS LOGOS LADO A LADO!
+    col_vazia1, col_logo1, col_logo2, col_vazia2 = st.columns([1, 1.5, 1.5, 1])
+    
+    with col_logo1:
         if os.path.exists("Logo AD Pereiro H.png"):
             st.image("Logo AD Pereiro H.png", use_container_width=True)
+            
+    with col_logo2:
+        if os.path.exists("Logo EB AD Pereiro.PNG"):
+            st.image("Logo EB AD Pereiro.PNG", use_container_width=True)
     
     st.markdown("<h1 style='text-align: center;'>Bem-vindo à Escola Bíblica Dominical</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center; color: #555;'>Assembleia de Deus Templo Central - Pereiro-CE</h3>", unsafe_allow_html=True)
