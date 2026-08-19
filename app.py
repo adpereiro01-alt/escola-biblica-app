@@ -119,9 +119,8 @@ st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout
 
 # --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    # AQUI FICA A LOGO DA SUPERINTENDÊNCIA (Lateral Esquerda)
-    if os.path.exists("Logo EB AD Pereiro.png"):
-        st.image("Logo EB AD Pereiro.png", use_container_width=True)
+    if os.path.exists("Logo EB AD Pereiro.PNG"):
+        st.image("Logo EB AD Pereiro.PNG", use_container_width=True)
     elif os.path.exists("Logo AD Pereiro H.png"):
         st.image("Logo AD Pereiro H.png", use_container_width=True)
     
@@ -142,9 +141,9 @@ with st.sidebar:
 
 # --- CABEÇALHO PARA PÁGINAS INTERNAS ---
 if menu != "Início":
-    # REMOVIDA A LOGO REPETIDA DAQUI. Fica apenas o Título da Página!
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("## Sistema de Secretaria de Escola Bíblica")
+    # AQUI ESTÁ O SEU NOVO TÍTULO APLICADO!
+    st.markdown("## Sistema de Secretária de Escola Bíblica")
     st.markdown("---")
 
 # --- TELAS ---
@@ -177,7 +176,7 @@ if menu == "Início":
             
     with col_super:
         if os.path.exists("superintendente.jpg"):
-            st.image("superintendente.jpg", width=250, caption="Coordenador da EBD")
+            st.image("superintendente.jpg", width=250, caption="Superintendente da EBD")
         else:
             st.info("📌 Envie a foto 'superintendente.jpg' no GitHub para aparecer aqui.")
 
@@ -444,9 +443,17 @@ elif menu == "Relatórios":
             oferta_resumo = df_o_trim.groupby("Sala")[col_pres].sum().reset_index() if col_pres else pd.DataFrame(columns=["Sala"] + col_soma)
             rel_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
             
+            # --- BLINDAGEM DO NONE E FORMATAÇÃO (TRIMESTRE) ---
+            for col in ["Presentes", "Visitantes", "Bíblias", "Revistas", "Valor Total"]:
+                if col not in rel_final.columns:
+                    rel_final[col] = 0
+
             for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
-                if col in rel_final.columns:
-                    rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
+                rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
+            
+            # Formata a coluna de Valor Total para exibir R$ bonitinho
+            rel_final["Valor Total"] = rel_final["Valor Total"].apply(lambda x: f"R$ {float(x):.2f}".replace('.', ',') if pd.notnull(x) else "R$ 0,00")
+            
             st.dataframe(rel_final, use_container_width=True)
             
         elif aba_escolhida == "Dia Específico":
@@ -470,20 +477,27 @@ elif menu == "Relatórios":
                 oferta_resumo = df_o_dia.groupby("Sala")[col_pres].sum().reset_index() if col_pres else pd.DataFrame(columns=["Sala"] + col_soma)
                 rel_final = pd.merge(pres_resumo, oferta_resumo, on="Sala", how="outer").fillna(0)
                 
+                # --- BLINDAGEM DO NONE (DIA ESPECÍFICO) ---
+                for col in ["Presentes", "Visitantes", "Bíblias", "Revistas", "Valor Total"]:
+                    if col not in rel_final.columns:
+                        rel_final[col] = 0
+
                 for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
-                    if col in rel_final.columns:
-                        rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
+                    rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
                 
                 if not rel_final.empty:
                     total_row = pd.DataFrame([{
                         "Sala": "TOTAL GERAL",
-                        "Presentes": int(rel_final.get("Presentes", pd.Series([0])).sum()),
-                        "Visitantes": int(rel_final.get("Visitantes", pd.Series([0])).sum()),
-                        "Bíblias": int(rel_final.get("Bíblias", pd.Series([0])).sum()),
-                        "Revistas": int(rel_final.get("Revistas", pd.Series([0])).sum()),
-                        "Valor Total": rel_final.get("Valor Total", pd.Series([0])).sum()
+                        "Presentes": int(rel_final["Presentes"].sum()),
+                        "Visitantes": int(rel_final["Visitantes"].sum()),
+                        "Bíblias": int(rel_final["Bíblias"].sum()),
+                        "Revistas": int(rel_final["Revistas"].sum()),
+                        "Valor Total": rel_final["Valor Total"].sum()
                     }])
                     rel_final = pd.concat([rel_final, total_row], ignore_index=True)
+                
+                # Formata a coluna de Valor Total para exibir R$ bonitinho (incluindo o Total Geral)
+                rel_final["Valor Total"] = rel_final["Valor Total"].apply(lambda x: f"R$ {float(x):.2f}".replace('.', ',') if pd.notnull(x) else "R$ 0,00")
                     
                 st.dataframe(rel_final, use_container_width=True)
             else:
