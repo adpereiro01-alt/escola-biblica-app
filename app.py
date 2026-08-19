@@ -144,7 +144,7 @@ with st.sidebar:
 if menu != "Início":
     # REMOVIDA A LOGO REPETIDA DAQUI. Fica apenas o Título da Página!
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("## Sistema Secretaria de Escola Bíblica")
+    st.markdown("## Sistema de Secretaria de Escola Bíblica")
     st.markdown("---")
 
 # --- TELAS ---
