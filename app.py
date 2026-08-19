@@ -119,10 +119,10 @@ st.set_page_config(page_title="Escola Bíblica - ADTC", page_icon="📖", layout
 
 # --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    # AQUI ALTERAMOS PARA A LOGO DA SUPERINTENDÊNCIA
+    # AQUI FICA A LOGO DA SUPERINTENDÊNCIA (Lateral Esquerda)
     if os.path.exists("Logo EB AD Pereiro.PNG"):
         st.image("Logo EB AD Pereiro.PNG", use_container_width=True)
-    elif os.path.exists("Logo AD Pereiro H.png"): # Caso a outra falhe, usa a antiga
+    elif os.path.exists("Logo AD Pereiro H.png"):
         st.image("Logo AD Pereiro H.png", use_container_width=True)
     
     st.markdown("---")
@@ -142,21 +142,15 @@ with st.sidebar:
 
 # --- CABEÇALHO PARA PÁGINAS INTERNAS ---
 if menu != "Início":
-    # AUMENTEI O ESPAÇO AQUI (DE 1 PARA 1.5) PARA A LOGO NÃO FICAR CORTADA NO PC
-    col_logo_peq, col_titulo = st.columns([1.5, 4])
-    with col_logo_peq:
-        if os.path.exists("Logo AD Pereiro H.png"):
-            st.image("Logo AD Pereiro H.png", use_container_width=True)
-    with col_titulo:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("## Sistema de Controle de EBD")
+    # REMOVIDA A LOGO REPETIDA DAQUI. Fica apenas o Título da Página!
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("## Sistema de Controle de EBD")
     st.markdown("---")
 
 # --- TELAS ---
 if menu == "Início":
     adicionar_fundo("fundo_home.jpg") 
     
-    # TRUQUE DAS COLUNAS: AGORA TEMOS ESPAÇO PARA AS DUAS LOGOS LADO A LADO!
     col_vazia1, col_logo1, col_logo2, col_vazia2 = st.columns([1, 1.5, 1.5, 1])
     
     with col_logo1:
