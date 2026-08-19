@@ -177,7 +177,7 @@ if menu == "Início":
             
     with col_super:
         if os.path.exists("superintendente.jpg"):
-            st.image("superintendente.jpg", width=250, caption="Superintendente da EBD")
+            st.image("superintendente.jpg", width=250, caption="Coordenador da EBD")
         else:
             st.info("📌 Envie a foto 'superintendente.jpg' no GitHub para aparecer aqui.")
 
