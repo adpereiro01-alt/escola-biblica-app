@@ -191,7 +191,7 @@ elif menu == "Cadastrar Aluno":
     if st.button("Salvar Aluno"):
         if nome:
             salvar_linha(ABA_MATRICULADOS, [datetime.now().strftime("%d/%m/%Y"), nome, whatsapp, cong, sala, trimestre])
-            st.success("Aluno salvo com sucesso!")
+            st.success("✅ Cadastro Realizado com Sucesso!")
         else:
             st.warning("Preencha o nome do aluno.")
 
@@ -206,7 +206,7 @@ elif menu == "Cadastrar Professor":
     if st.button("Salvar Professor"):
         if nome:
             salvar_linha(ABA_PROFESSORES, [datetime.now().strftime("%d/%m/%Y"), nome, whatsapp, cong, sala])
-            st.success("Professor salvo com sucesso!")
+            st.success("✅ Cadastro Realizado com Sucesso!")
         else:
             st.warning("Preencha o nome do professor.")
 
@@ -285,12 +285,12 @@ elif menu == "Consultar Cadastros":
                                 nova_lista = [data_original, e_nome, e_whatsapp, e_cong, e_sala]
                                 
                             atualizar_linha(aba_alvo, linha_planilha, nova_lista)
-                            st.success("✅ Dados atualizados com sucesso no Google Sheets! Atualize a página para ver.")
+                            st.success("✅ Atualização Realizada com Sucesso! (Atualize a página para ver)")
                             
             with col_btn2:
                 if st.button("🗑️ Excluir Cadastro", type="primary"):
                     excluir_linha(aba_alvo, linha_planilha)
-                    st.success(f"{pessoa_selecionada} excluído(a) com sucesso!")
+                    st.success(f"✅ Exclusão Realizada com Sucesso!")
                     st.rerun() 
 
 elif menu == "Realizar Chamada":
@@ -349,7 +349,7 @@ elif menu == "Realizar Chamada":
                     salvar_linha(ABA_CHAMADAS, [data, cong, sala, nome_aluno, "Sim"])
             
             salvar_linha(ABA_OFERTAS, [data, cong, sala, prof_dia, visitantes, qtd_biblias, qtd_revistas, oferta])
-            st.success("Chamada salva com sucesso!")
+            st.success("✅ Chamada Realizada com Sucesso!")
 
 elif menu == "Relatórios":
     adicionar_fundo("fundo_relatorio.jpg")
@@ -358,12 +358,10 @@ elif menu == "Relatórios":
     df_o = carregar_dados(ABA_OFERTAS)
     
     if not df_c.empty or not df_o.empty:
-        # --- BLINDAGEM DE OFERTAS: AJUSTADO PARA BUSCAR O NOME "Oferta" (SEM O "VALOR TOTAL") ---
         if not df_o.empty:
             for col_num in ["Visitantes", "Bíblias", "Revistas", "Oferta"]:
                 if col_num in df_o.columns:
                     if col_num == "Oferta":
-                        # Remove R$, remove espaços em branco e troca vírgula por ponto para fazer a conta
                         limpo = df_o[col_num].astype(str).str.replace('R$', '', regex=False).str.replace(' ', '', regex=False).str.replace(',', '.')
                         df_o[col_num] = pd.to_numeric(limpo, errors='coerce').fillna(0.0)
                     else:
@@ -452,7 +450,6 @@ elif menu == "Relatórios":
             for col in ["Presentes", "Visitantes", "Bíblias", "Revistas"]:
                 rel_final[col] = pd.to_numeric(rel_final[col], errors='coerce').fillna(0).astype(int)
             
-            # Formata a oferta no final
             if "Oferta" in rel_final.columns:
                 rel_final["Oferta"] = rel_final["Oferta"].apply(lambda x: f"R$ {float(x):.2f}".replace('.', ',') if pd.notnull(x) else "R$ 0,00")
             
