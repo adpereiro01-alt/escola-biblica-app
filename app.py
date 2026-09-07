@@ -13,6 +13,7 @@ ABA_MATRICULADOS = "Relação Matriculados"
 ABA_PROFESSORES = "Relação Professores"
 ABA_CHAMADAS = "Registro Chamadas"
 ABA_OFERTAS = "Registro Ofertas"
+ABA_RESERVAS = "Reserva Revistas" # NOVA ABA PARA AS REVISTAS
 
 CONGREGACOES = ["Sede", "Congregação Crioulas", "Congregação Chabocão", "Congregação Lagoa dos Marinheiros", "Congregação Melo", "Congregação Muritiba"]
 SALAS = ["Adultos", "Adolescentes", "Jovens", "Maternal", "Juniores", "Primários", "Discipulados"]
@@ -128,8 +129,9 @@ with st.sidebar:
     
     menu = option_menu(
         menu_title="Menu Principal",
-        options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Consultar Cadastros", "Realizar Chamada", "Relatórios"],
-        icons=["house", "person-add", "easel", "search", "card-checklist", "bar-chart"], 
+        # ADICIONADA A TELA DE RESERVA DE REVISTAS NO MENU
+        options=["Início", "Cadastrar Aluno", "Cadastrar Professor", "Consultar Cadastros", "Realizar Chamada", "Reserva de Revistas", "Relatórios"],
+        icons=["house", "person-add", "easel", "search", "card-checklist", "book", "bar-chart"], 
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "transparent"},
@@ -350,6 +352,53 @@ elif menu == "Realizar Chamada":
             
             salvar_linha(ABA_OFERTAS, [data, cong, sala, prof_dia, visitantes, qtd_biblias, qtd_revistas, oferta])
             st.success("✅ Chamada Realizada com Sucesso!")
+
+# --- NOVA TELA: RESERVA DE REVISTAS ---
+elif menu == "Reserva de Revistas":
+    # Se você subir uma foto fundo_reserva.jpg no GitHub ela aparece, senão fica branco (ou pega a de aluno)
+    adicionar_fundo("fundo_aluno.jpg") 
+    st.title("📚 Reserva de Revistas")
+    
+    st.markdown("### Preencha os dados do pedido")
+    
+    secretaria = st.text_input("Nome da Secretária (Quem está realizando a reserva)")
+    
+    st.markdown("---")
+    
+    df_alunos = carregar_dados(ABA_MATRICULADOS)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        cong = st.selectbox("Congregação do Aluno", CONGREGACOES)
+    with col2:
+        sala = st.selectbox("Sala da Escola Dominical", SALAS)
+        
+    alunos_sala = []
+    if not df_alunos.empty and "Congregação" in df_alunos.columns and "Sala" in df_alunos.columns:
+        alunos_sala = df_alunos[(df_alunos["Congregação"] == cong) & (df_alunos["Sala"] == sala)]["Nome"].tolist()
+        
+    if alunos_sala:
+        aluno = st.selectbox("Selecione o Aluno", alunos_sala)
+    else:
+        st.warning("Nenhum aluno encontrado nesta congregação e sala.")
+        aluno = None
+
+    st.markdown("---")
+    st.markdown("### Detalhes Financeiros")
+    st.info(f"📖 **Revista Selecionada:** {sala}")
+    
+    pagamento = st.radio("Forma de Pagamento", ["À vista", "Parcelado em 2x"], horizontal=True)
+    
+    if st.button("Salvar Reserva"):
+        if not secretaria:
+            st.warning("Preencha o nome da Secretária que está registrando.")
+        elif not aluno:
+            st.warning("Selecione um aluno para fazer a reserva.")
+        else:
+            data_atual = datetime.now().strftime("%d/%m/%Y")
+            # Ordem de salvamento: Data | Secretária | Congregação | Sala/Revista | Aluno | Pagamento
+            salvar_linha(ABA_RESERVAS, [data_atual, secretaria, cong, sala, aluno, pagamento])
+            st.success("✅ Reserva Realizada com Sucesso!")
 
 elif menu == "Relatórios":
     adicionar_fundo("fundo_relatorio.jpg")
