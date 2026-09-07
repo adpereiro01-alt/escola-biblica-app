@@ -363,7 +363,6 @@ elif menu == "Reserva de Revistas":
     
     st.markdown("---")
     
-    # NOVA OPÇÃO: Escolher entre Aluno ou Professor
     tipo_reserva = st.radio("A reserva é para um Aluno ou Professor?", ["Aluno", "Professor"], horizontal=True)
     
     aba_alvo = ABA_MATRICULADOS if tipo_reserva == "Aluno" else ABA_PROFESSORES
@@ -373,21 +372,34 @@ elif menu == "Reserva de Revistas":
     with col1:
         cong = st.selectbox("Congregação", CONGREGACOES)
     with col2:
-        sala = st.selectbox("Sala da Escola Dominical / Revista", SALAS)
+        sala = st.selectbox("Selecione a Revista", SALAS)
         
     pessoas_sala = []
-    if not df_pessoas.empty and "Congregação" in df_pessoas.columns and "Sala" in df_pessoas.columns:
-        pessoas_sala = df_pessoas[(df_pessoas["Congregação"] == cong) & (df_pessoas["Sala"] == sala)]["Nome"].tolist()
-        
+    if not df_pessoas.empty and "Congregação" in df_pessoas.columns:
+        if tipo_reserva == "Aluno":
+            # Aluno filtra por Congregação e Sala
+            if "Sala" in df_pessoas.columns:
+                pessoas_sala = df_pessoas[(df_pessoas["Congregação"] == cong) & (df_pessoas["Sala"] == sala)]["Nome"].tolist()
+        else:
+            # Professor filtra APENAS pela Congregação (para achar ele fácil, independente da sala que dá aula)
+            pessoas_sala = df_pessoas[df_pessoas["Congregação"] == cong]["Nome"].tolist()
+            
     if pessoas_sala:
-        nome_selecionado = st.selectbox(f"Selecione o {tipo_reserva}", pessoas_sala)
+        pessoas_sala = sorted(pessoas_sala) # Coloca os nomes em ordem alfabética!
+        if tipo_reserva == "Professor":
+            nome_selecionado = st.selectbox(f"Selecione o Professor (Todos da {cong})", pessoas_sala)
+        else:
+            nome_selecionado = st.selectbox(f"Selecione o Aluno (Da sala {sala})", pessoas_sala)
     else:
-        st.warning(f"Nenhum {tipo_reserva.lower()} encontrado nesta congregação e sala.")
+        if tipo_reserva == "Professor":
+            st.warning(f"Nenhum professor encontrado na congregação: {cong}.")
+        else:
+            st.warning(f"Nenhum aluno encontrado nesta congregação e sala.")
         nome_selecionado = None
 
     st.markdown("---")
     st.markdown("### Detalhes Financeiros")
-    st.info(f"📖 **Revista Selecionada:** {sala}")
+    st.info(f"📖 **Revista que será reservada:** {sala}")
     
     pagamento = st.radio("Forma de Pagamento", ["À vista", "Parcelado em 2x"], horizontal=True)
     
